@@ -111,7 +111,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
 
     // Only collect options from the currently active subcommand
     if (!active_subcommand.empty()) {
-        for (auto* sub : app.get_subcommands()) {
+        for (auto* sub : app.get_subcommands([](CLI::App*) { return true; })) {
             if (sub->get_name() == active_subcommand) {
                 args.push_back(active_subcommand);  // subcommand selector
                 collect_from(app, sub);
@@ -165,7 +165,7 @@ void launch_gui(App& app, int argc, char** argv) {
             ImGui::Separator();
 
             // Render subcommands as tabs, or plain options if no subcommands
-            if (!app.get_subcommands().empty()) {
+            if (!app.get_subcommands([](CLI::App*) { return true; }).empty()) {
                 detail::render_subcommands(app, console);
             } else {
                 detail::render_options(app);
