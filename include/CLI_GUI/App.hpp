@@ -60,7 +60,7 @@ public:
     App* set_main(std::function<void()> fn)      { gui_main_ = std::move(fn); return this; }
 
     // App-level accessors
-    std::string gui_title() const     { return gui_title_.empty() ? get_name() : gui_title_; }
+    std::string gui_title() const     { return gui_title_.empty() ? (get_name().empty() ? get_description() : get_name()) : gui_title_; }
     int gui_width() const             { return gui_width_; }
     int gui_height() const            { return gui_height_; }
     bool gui_show_console() const     { return gui_show_console_; }

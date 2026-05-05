@@ -5,6 +5,9 @@ function(add_cli_gui_example name)
         set_target_properties(${name} PROPERTIES
             LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
         )
+        target_sources(${name} PRIVATE
+            ${CMAKE_SOURCE_DIR}/resources/cli_gui.rc
+        )
     endif()
 endfunction()
 

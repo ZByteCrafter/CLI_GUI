@@ -1,0 +1,3 @@
+// Resource file for CLI11_GUI applications
+// Embeds the application icon into the executable.
+IDI_CLI_GUI ICON "cli_gui.ico"
