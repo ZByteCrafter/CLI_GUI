@@ -1,9 +1,10 @@
 #include "catch2.hpp"
 #include <CLI_GUI/CLI_GUI.hpp>
 
-TEST_CASE("CLI_GUI::App can be default-constructed", "[app]") {
-    CLI_GUI::App app{"Description", "Test App"};
+TEST_CASE("CLI_GUI::App can be constructed with description", "[app]") {
+    CLI_GUI::App app{"My Description", "Test App"};
     REQUIRE(app.get_name() == "Test App");
+    REQUIRE(app.get_description() == "My Description");
 }
 
 TEST_CASE("CLI_GUI::App inherits CLI::App API", "[app]") {
