@@ -1,3 +1,4 @@
+#define CATCH_CONFIG_MAIN
 #include "catch2.hpp"
 #include <CLI_GUI/CLI_GUI.hpp>
 

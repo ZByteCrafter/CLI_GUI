@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <stdexcept>
+#include <exception>
 
 struct TestCase {
     std::string name;
@@ -36,6 +37,7 @@ struct AutoRegister {
         throw std::runtime_error("REQUIRE failed"); \
     } } while(0)
 
+#ifdef CATCH_CONFIG_MAIN
 int main() {
     int passed = 0, failed = 0;
     for (auto& tc : test_registry()) {
@@ -45,10 +47,11 @@ int main() {
             std::cout << "PASSED" << std::endl;
             passed++;
         } catch (const std::exception& e) {
-            std::cout << "FAILED" << std::endl;
+            std::cout << "FAILED (" << e.what() << ")" << std::endl;
             failed++;
         }
     }
     std::cout << "\n" << passed << " passed, " << failed << " failed" << std::endl;
     return failed > 0 ? 1 : 0;
 }
+#endif
