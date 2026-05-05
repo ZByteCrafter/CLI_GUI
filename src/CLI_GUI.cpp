@@ -16,7 +16,9 @@ namespace CLI_GUI {
 
 /// Collect values from per-option GUI state and write them back to CLI11.
 /// Builds a fake argv and calls app.parse() to trigger validation and callbacks.
-static void flush_gui_to_cli(App& app) {
+/// @param active_subcommand  if non-empty, only collect options from this subcommand,
+///                           inserting its name as a positional arg before its options.
+static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
     std::vector<std::string> args;
     args.push_back("gui"); // argv[0] placeholder
 
@@ -106,8 +108,16 @@ static void flush_gui_to_cli(App& app) {
     };
 
     collect_from(app, &app);
-    for (auto* sub : app.get_subcommands()) {
-        collect_from(app, sub);
+
+    // Only collect options from the currently active subcommand
+    if (!active_subcommand.empty()) {
+        for (auto* sub : app.get_subcommands()) {
+            if (sub->get_name() == active_subcommand) {
+                args.push_back(active_subcommand);  // subcommand selector
+                collect_from(app, sub);
+                break;
+            }
+        }
     }
 
     // Build char* array and parse
@@ -175,7 +185,7 @@ void launch_gui(App& app, int argc, char** argv) {
                 console.run_requested = false;
 
                 // Flush GUI values back to CLI11 before executing
-                flush_gui_to_cli(app);
+                flush_gui_to_cli(app, console.active_subcommand);
 
                 auto cb = app.gui_callback();
                 auto main_fn = app.gui_main();
@@ -220,7 +230,7 @@ void launch_gui(App& app, int argc, char** argv) {
         }
 
         // On exit, flush values one more time (in case user quit without Run)
-        flush_gui_to_cli(app);
+        flush_gui_to_cli(app, console.active_subcommand);
 
         // Wait for worker thread
         app.request_cancel();

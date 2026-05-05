@@ -28,6 +28,7 @@ struct ConsoleState {
     int console_height = 150;
     bool run_requested = false;
     bool quit_requested = false;
+    std::string active_subcommand;  // name of the selected subcommand tab
 
     /// Append a line. If over limit, drop oldest.
     void push_line(const std::string& line) {
@@ -245,16 +246,24 @@ inline void render_subcommands(App& app, ConsoleState& console) {
     ImGui::Separator();
     if (ImGui::BeginTabBar("Subcommands")) {
         // Root tab (app-level options)
-        if (ImGui::BeginTabItem(app.get_name().empty() ? "Main" : app.get_name().c_str())) {
+        bool root_open = ImGui::BeginTabItem(
+            app.get_name().empty() ? "Main" : app.get_name().c_str());
+        if (root_open) {
             render_options(app);
             ImGui::EndTabItem();
         }
+        if (root_open) {
+            console.active_subcommand.clear();  // root tab = no subcommand
+        }
+
         for (auto* sub : subs) {
-            if (ImGui::BeginTabItem(sub->get_name().c_str())) {
+            bool tab_open = ImGui::BeginTabItem(sub->get_name().c_str());
+            if (tab_open) {
                 for (auto* opt : sub->get_options()) {
                     render_option(app, opt);
                 }
                 ImGui::EndTabItem();
+                console.active_subcommand = sub->get_name();
             }
         }
         ImGui::EndTabBar();
