@@ -75,9 +75,11 @@ inline void render_option(App& app, CLI::Option* opt) {
         case WidgetType::DirPicker:
         case WidgetType::CodeEditor:
         case WidgetType::IpAddress: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
-                mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
+                    mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                }
                 mut_meta.initialized = true;
             }
             ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
@@ -85,9 +87,11 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::InputInt:
         case WidgetType::SpinInt: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                try { mut_meta.int_state = std::stoi(opt->results()[0]); }
-                catch (...) { mut_meta.int_state = 0; }
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { mut_meta.int_state = 0; }
+                }
                 mut_meta.initialized = true;
             }
             ImGui::InputInt(label.c_str(), &mut_meta.int_state);
@@ -95,18 +99,22 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::InputFloat:
         case WidgetType::SpinFloat: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                try { mut_meta.float_state = std::stof(opt->results()[0]); }
-                catch (...) { mut_meta.float_state = 0.0f; }
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    try { mut_meta.float_state = std::stof(opt->results()[0]); }
+                    catch (...) { mut_meta.float_state = 0.0f; }
+                }
                 mut_meta.initialized = true;
             }
             ImGui::InputFloat(label.c_str(), &mut_meta.float_state);
             break;
         }
         case WidgetType::SliderInt: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                try { mut_meta.int_state = std::stoi(opt->results()[0]); }
-                catch (...) { mut_meta.int_state = 0; }
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { mut_meta.int_state = 0; }
+                }
                 mut_meta.initialized = true;
             }
             int mn = meta.has_min ? static_cast<int>(meta.min_val) : 0;
@@ -115,9 +123,11 @@ inline void render_option(App& app, CLI::Option* opt) {
             break;
         }
         case WidgetType::SliderFloat: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                try { mut_meta.float_state = std::stof(opt->results()[0]); }
-                catch (...) { mut_meta.float_state = 0.0f; }
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    try { mut_meta.float_state = std::stof(opt->results()[0]); }
+                    catch (...) { mut_meta.float_state = 0.0f; }
+                }
                 mut_meta.initialized = true;
             }
             float mn = meta.has_min ? static_cast<float>(meta.min_val) : 0.0f;
