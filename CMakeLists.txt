@@ -38,11 +38,16 @@ if(CLI_GUI_ENABLE_GUI)
     add_subdirectory(vendor/glfw EXCLUDE_FROM_ALL)
     target_link_libraries(CLI_GUI INTERFACE glfw)
 
-    # Compiled GUI translation unit
-    add_library(CLI_GUI_Gui STATIC src/CLI_GUI.cpp)
+    # Compiled GUI translation unit (includes imgui backends)
+    add_library(CLI_GUI_Gui STATIC
+        src/CLI_GUI.cpp
+        vendor/imgui_backends/imgui_impl_glfw.cpp
+        vendor/imgui_backends/imgui_impl_opengl3.cpp
+    )
     target_link_libraries(CLI_GUI_Gui PUBLIC CLI_GUI imgui glfw)
     target_include_directories(CLI_GUI_Gui PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui_backends
     )
     target_link_libraries(CLI_GUI INTERFACE CLI_GUI_Gui)
 endif()
