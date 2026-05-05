@@ -39,25 +39,26 @@ int main(int argc, char** argv) {
     bool recursive = false;
     app.add_flag("-r,--recursive", recursive, "Process subdirectories");
 
+    app.set_main([&]() {
+        std::cout << "Files to rename: " << files.size() << std::endl;
+        for (auto& f : files) std::cout << "  " << f << std::endl;
+
+        if (!prefix.empty()) std::cout << "Prefix: " << prefix << std::endl;
+        if (!suffix.empty()) std::cout << "Suffix: " << suffix << std::endl;
+
+        if (!includes.empty()) {
+            std::cout << "Include patterns:" << std::endl;
+            for (auto& p : includes) std::cout << "  " << p << std::endl;
+        }
+        if (!excludes.empty()) {
+            std::cout << "Exclude patterns:" << std::endl;
+            for (auto& p : excludes) std::cout << "  " << p << std::endl;
+        }
+
+        std::cout << "Dry-run: " << (dry_run ? "yes" : "no") << std::endl;
+        std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    std::cout << "Files to rename: " << files.size() << std::endl;
-    for (auto& f : files) std::cout << "  " << f << std::endl;
-
-    if (!prefix.empty()) std::cout << "Prefix: " << prefix << std::endl;
-    if (!suffix.empty()) std::cout << "Suffix: " << suffix << std::endl;
-
-    if (!includes.empty()) {
-        std::cout << "Include patterns:" << std::endl;
-        for (auto& p : includes) std::cout << "  " << p << std::endl;
-    }
-    if (!excludes.empty()) {
-        std::cout << "Exclude patterns:" << std::endl;
-        for (auto& p : excludes) std::cout << "  " << p << std::endl;
-    }
-
-    std::cout << "Dry-run: " << (dry_run ? "yes" : "no") << std::endl;
-    std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
-
     return 0;
 }

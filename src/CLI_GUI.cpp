@@ -178,6 +178,7 @@ void launch_gui(App& app, int argc, char** argv) {
                 flush_gui_to_cli(app);
 
                 auto cb = app.gui_callback();
+                auto main_fn = app.gui_main();
                 if (cb) {
                     console.running = true;
                     app.reset_cancel();
@@ -192,8 +193,22 @@ void launch_gui(App& app, int argc, char** argv) {
                         else
                             console.push_line("[CANCEL] Cancelled by user.");
                     });
+                } else if (main_fn) {
+                    // Run user's main logic in worker thread, keep GUI open
+                    console.running = true;
+                    app.reset_cancel();
+                    console.push_line("[INFO] Running...");
+                    if (worker.joinable()) worker.join();
+                    worker = std::thread([main_fn, &app, &console]() {
+                        main_fn();
+                        console.running = false;
+                        if (!app.is_cancelled())
+                            console.push_line("[DONE] Complete.");
+                        else
+                            console.push_line("[CANCEL] Cancelled by user.");
+                    });
                 } else {
-                    // No callback -- show status, let user close manually
+                    // Neither callback nor main -- show status, let user close manually
                     console.push_line("[DONE] Values collected. Close this window or click Quit to exit.");
                 }
             }

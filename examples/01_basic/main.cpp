@@ -18,15 +18,17 @@ int main(int argc, char** argv) {
     bool uppercase = false;
     app.add_flag("-u,--upper", uppercase, "Uppercase output");
 
-    CLI_GUI_PARSE(app, argc, argv);
-
-    for (int i = 0; i < count; ++i) {
-        std::string msg = "Hello, " + name + "!";
-        if (uppercase) {
-            for (auto& c : msg) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    app.set_main([&]() {
+        for (int i = 0; i < count; ++i) {
+            std::string msg = "Hello, " + name + "!";
+            if (uppercase) {
+                for (auto& c : msg)
+                    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            }
+            std::cout << "[" << (i + 1) << "] " << msg << std::endl;
         }
-        std::cout << "[" << (i+1) << "] " << msg << std::endl;
-    }
+    });
 
+    CLI_GUI_PARSE(app, argc, argv);
     return 0;
 }

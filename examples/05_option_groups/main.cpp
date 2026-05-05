@@ -58,14 +58,15 @@ int main(int argc, char** argv) {
     bool sharpen = false;
     app.add_flag("--sharpen", sharpen, "Apply sharpen filter");
 
+    app.set_main([&]() {
+        std::cout << "Processing: " << source << std::endl;
+        std::cout << "  Target size: " << width << "x" << height << std::endl;
+        std::cout << "  Output: " << dest << " (" << format
+                  << ", quality=" << quality << ")" << std::endl;
+        if (grayscale) std::cout << "  Filter: grayscale" << std::endl;
+        if (sharpen)   std::cout << "  Filter: sharpen" << std::endl;
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    std::cout << "Processing: " << source << std::endl;
-    std::cout << "  Target size: " << width << "x" << height << std::endl;
-    std::cout << "  Output: " << dest << " (" << format
-              << ", quality=" << quality << ")" << std::endl;
-    if (grayscale) std::cout << "  Filter: grayscale" << std::endl;
-    if (sharpen)   std::cout << "  Filter: sharpen" << std::endl;
-
     return 0;
 }

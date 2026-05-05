@@ -45,14 +45,15 @@ int main(int argc, char** argv) {
     CLI_GUI::gui_label(app.get_option("--key"), "API Key", app);
     CLI_GUI::gui_widget(app.get_option("--key"), CLI_GUI::WidgetType::Password, app);
 
+    app.set_main([&]() {
+        std::cout << "Background:  " << bg_color << std::endl;
+        std::cout << "Foreground:  " << fg_color << std::endl;
+        std::cout << "Accent:      " << accent << std::endl;
+        std::cout << "Config:      " << config_file << std::endl;
+        std::cout << "Output dir:  " << output_dir << std::endl;
+        std::cout << "Export:      " << export_path << std::endl;
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    std::cout << "Background:  " << bg_color << std::endl;
-    std::cout << "Foreground:  " << fg_color << std::endl;
-    std::cout << "Accent:      " << accent << std::endl;
-    std::cout << "Config:      " << config_file << std::endl;
-    std::cout << "Output dir:  " << output_dir << std::endl;
-    std::cout << "Export:      " << export_path << std::endl;
-
     return 0;
 }

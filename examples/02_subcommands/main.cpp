@@ -19,15 +19,16 @@ int main(int argc, char** argv) {
     export_cmd->add_option("-f,--format", format, "Output format");
     CLI_GUI::gui_values(export_cmd->get_option("--format"), {"json","csv","xml","txt"}, app);
 
+    app.set_main([&]() {
+        if (analyze->parsed()) {
+            std::cout << "Analyzing " << input << " with method=" << method << std::endl;
+        } else if (export_cmd->parsed()) {
+            std::cout << "Exporting " << input << " as " << format << std::endl;
+        } else {
+            std::cout << "Processing " << input << std::endl;
+        }
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    if (analyze->parsed()) {
-        std::cout << "Analyzing " << input << " with method=" << method << std::endl;
-    } else if (export_cmd->parsed()) {
-        std::cout << "Exporting " << input << " as " << format << std::endl;
-    } else {
-        std::cout << "Processing " << input << std::endl;
-    }
-
     return 0;
 }

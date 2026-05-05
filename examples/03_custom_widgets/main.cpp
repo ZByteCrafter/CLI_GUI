@@ -24,12 +24,13 @@ int main(int argc, char** argv) {
     app.add_option("-o,--output", output, "Save to file");
     CLI_GUI::gui_widget(app.get_option("--output"), CLI_GUI::WidgetType::FileSave, app);
 
+    app.set_main([&]() {
+        std::cout << "Mode: " << mode << std::endl;
+        std::cout << "Config: " << config.substr(0, 50)
+                  << (config.size() > 50 ? "..." : "") << std::endl;
+        std::cout << "Output: " << output << std::endl;
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    std::cout << "Mode: " << mode << std::endl;
-    std::cout << "Config: " << config.substr(0, 50)
-              << (config.size() > 50 ? "..." : "") << std::endl;
-    std::cout << "Output: " << output << std::endl;
-
     return 0;
 }

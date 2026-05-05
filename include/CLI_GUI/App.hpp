@@ -57,6 +57,7 @@ public:
     App* gui_show_console(bool s)     { gui_show_console_ = s; return this; }
     App* gui_console_height(int h)    { gui_console_height_ = h; return this; }
     App* set_callback(std::function<void()> cb) { gui_callback_ = std::move(cb); return this; }
+    App* set_main(std::function<void()> fn)      { gui_main_ = std::move(fn); return this; }
 
     // App-level accessors
     std::string gui_title() const     { return gui_title_.empty() ? get_name() : gui_title_; }
@@ -65,6 +66,7 @@ public:
     bool gui_show_console() const     { return gui_show_console_; }
     int gui_console_height() const    { return gui_console_height_; }
     std::function<void()> gui_callback() const { return gui_callback_; }
+    std::function<void()> gui_main() const      { return gui_main_; }
 
     // Access to metadata map (for LayoutEngine)
     std::unordered_map<CLI::Option*, OptionGuiMeta>& option_meta_map() { return option_meta_; }
@@ -87,6 +89,7 @@ private:
     bool gui_show_console_ = true;
     int gui_console_height_ = 150;
     std::function<void()> gui_callback_;
+    std::function<void()> gui_main_;
     std::atomic<float> progress_{0.0f};
     std::atomic<bool> cancelled_{false};
 };
@@ -132,6 +135,8 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
             catch (const CLI::ParseError& e) {              \
                 (app).exit(e);                              \
             }                                               \
+            auto __main = (app).gui_main();                \
+            if (__main) __main();                           \
         }                                                   \
     } while (0)
 #else
@@ -141,6 +146,8 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
         catch (const CLI::ParseError& e) {                  \
             (app).exit(e);                                  \
         }                                                   \
+        auto __main = (app).gui_main();                    \
+        if (__main) __main();                               \
     } while (0)
 #endif
 

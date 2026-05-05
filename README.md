@@ -21,10 +21,11 @@ int main(int argc, char** argv) {
     bool verbose = false;
     app.add_flag("-v,--verbose", verbose, "详细输出");
 
-    CLI_GUI_PARSE(app, argc, argv);  // 3. 换宏
+    app.set_main([&]() {           // 3. 注册主逻辑（替代 main() 中的后续代码）
+        run_my_logic(count, verbose);
+    });
 
-    // 变量已填充，无论 CLI 还是 GUI
-    run_my_logic(count, verbose);
+    CLI_GUI_PARSE(app, argc, argv);  // 4. 换宏（↑ set_main 会被自动调用）
 }
 ```
 
@@ -95,7 +96,8 @@ app.gui_title("窗口标题");       // 设置 GUI 窗口标题（默认使用 A
 app.gui_size(1024, 768);        // 设置 GUI 窗口大小（默认 800x600）
 app.gui_show_console(false);    // 隐藏控制台输出面板
 app.gui_console_height(200);    // 设置控制台面板高度
-app.set_callback(fn);           // 设置 Run 按钮回调（后台线程执行）
+app.set_main(fn);               // 注册主逻辑：GUI 模式下在线程中执行，CLI 模式下 parse 后执行
+app.set_callback(fn);           // 注册长耗时回调（含进度条 + Cancel）
 app.update_progress(0.5f);      // 更新进度条（0.0~1.0，回调中调用）
 app.is_cancelled();             // 检查 Cancel 是否被按下
 ```
@@ -113,9 +115,17 @@ CLI_GUI::gui_max(opt, 100, app);                   // 最大值（Slider/Spin）
 CLI_GUI::gui_values(opt, {"a","b","c"}, app);      // 候选值（Combo/Radio）
 ```
 
-### 耗时任务回调
+### 主逻辑与耗时任务
 
 ```cpp
+// 方式一：set_main（简单输出，推荐大多数场景）
+app.set_main([&]() {
+    std::cout << "Hello, " << name << "!" << std::endl;
+});
+CLI_GUI_PARSE(app, argc, argv);
+// CLI 模式下 parse 后调用；GUI 模式下 Run 按钮触发，输出显示在控制台面板
+
+// 方式二：set_callback（长耗时 + 进度条）
 app.set_callback([&]() {
     for (int i = 1; i <= steps; ++i) {
         if (app.is_cancelled()) return;             // 响应取消

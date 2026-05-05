@@ -101,25 +101,26 @@ int main(int argc, char** argv) {
         std::cout << "[OK] Encoding complete." << std::endl;
     });
 
+    // ── Main logic (CLI mode, or post-callback) ──
+    app.set_main([&]() {
+        if (encode->parsed()) {
+            std::cout << "Encode mode selected" << std::endl;
+            std::cout << "  Input: " << input_file << std::endl;
+            std::cout << "  Output: " << output_file << std::endl;
+            std::cout << "  Codec: " << codec << std::endl;
+            std::cout << "  Bitrate: " << bitrate << " kbps" << std::endl;
+            std::cout << "  CRF: " << crf << std::endl;
+            std::cout << "  Two-pass: " << (two_pass ? "yes" : "no") << std::endl;
+        }
+        if (resize->parsed()) {
+            std::cout << "Resize mode selected" << std::endl;
+            std::cout << "  Input: " << resize_input << std::endl;
+            std::cout << "  Output: " << resize_output << std::endl;
+            std::cout << "  Size: " << new_width << "x" << new_height << std::endl;
+        }
+        if (threads > 1) std::cout << "Using " << threads << " threads" << std::endl;
+    });
+
     CLI_GUI_PARSE(app, argc, argv);
-
-    // Report back
-    if (encode->parsed()) {
-        std::cout << "Encode mode selected" << std::endl;
-        std::cout << "  Input: " << input_file << std::endl;
-        std::cout << "  Output: " << output_file << std::endl;
-        std::cout << "  Codec: " << codec << std::endl;
-        std::cout << "  Bitrate: " << bitrate << " kbps" << std::endl;
-        std::cout << "  CRF: " << crf << std::endl;
-        std::cout << "  Two-pass: " << (two_pass ? "yes" : "no") << std::endl;
-    }
-    if (resize->parsed()) {
-        std::cout << "Resize mode selected" << std::endl;
-        std::cout << "  Input: " << resize_input << std::endl;
-        std::cout << "  Output: " << resize_output << std::endl;
-        std::cout << "  Size: " << new_width << "x" << new_height << std::endl;
-    }
-    if (threads > 1) std::cout << "Using " << threads << " threads" << std::endl;
-
     return 0;
 }
