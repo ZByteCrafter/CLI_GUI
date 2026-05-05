@@ -1,4 +1,5 @@
 build/
+build_gui/
 cmake-build-*/
 *.user
 .DS_Store

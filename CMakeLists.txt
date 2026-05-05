@@ -26,6 +26,25 @@ target_link_libraries(CLI_GUI INTERFACE CLI11::CLI11)
 if(CLI_GUI_ENABLE_GUI)
     message(STATUS "CLI_GUI: GUI support ENABLED")
     target_compile_definitions(CLI_GUI INTERFACE CLI_GUI_HAS_GUI)
+
+    # Vendor imgui
+    add_subdirectory(vendor/imgui EXCLUDE_FROM_ALL)
+    target_link_libraries(CLI_GUI INTERFACE imgui)
+    target_include_directories(CLI_GUI INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui_backends
+    )
+
+    # Vendor glfw
+    add_subdirectory(vendor/glfw EXCLUDE_FROM_ALL)
+    target_link_libraries(CLI_GUI INTERFACE glfw)
+
+    # Compiled GUI translation unit
+    add_library(CLI_GUI_Gui STATIC src/CLI_GUI.cpp)
+    target_link_libraries(CLI_GUI_Gui PUBLIC CLI_GUI imgui glfw)
+    target_include_directories(CLI_GUI_Gui PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(CLI_GUI INTERFACE CLI_GUI_Gui)
 endif()
 
 # Tests
