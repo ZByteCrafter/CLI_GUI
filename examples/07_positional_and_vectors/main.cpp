@@ -1,10 +1,12 @@
 // Example 07: Positional arguments + vector options
 // Demonstrates positional arguments and multi-value (vector) options.
 #include <CLI_GUI/CLI_GUI.hpp>
+#include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
 #include <vector>
 
 int main(int argc, char** argv) {
+    cli_gui_init_console();
     CLI_GUI::App app{"Batch Renamer"};
     app.gui_size(900, 700);
 

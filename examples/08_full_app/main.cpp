@@ -2,12 +2,14 @@
 // Combines: subcommands, option groups, color pickers, file dialogs, validators,
 //           progress bar, console output, and cancel support.
 #include <CLI_GUI/CLI_GUI.hpp>
+#include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <cmath>
 
 int main(int argc, char** argv) {
+    cli_gui_init_console();
     CLI_GUI::App app{"Media Converter Suite"};
     app.gui_size(960, 720);
 

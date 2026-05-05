@@ -1,9 +1,11 @@
 #include <CLI_GUI/CLI_GUI.hpp>
+#include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
 int main(int argc, char** argv) {
+    cli_gui_init_console();
     CLI_GUI::App app{"Long Task Demo"};
 
     int steps = 10;

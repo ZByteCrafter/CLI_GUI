@@ -1,9 +1,11 @@
 // Example 05: CLI::OptionGroup -> collapsible panels in GUI
 // Demonstrates how option groups are rendered as foldable sections.
 #include <CLI_GUI/CLI_GUI.hpp>
+#include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
 
 int main(int argc, char** argv) {
+    cli_gui_init_console();
     CLI_GUI::App app{"Image Processor v2.0"};
     app.gui_size(900, 700);
 

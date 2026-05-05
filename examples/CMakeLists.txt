@@ -1,6 +1,11 @@
 function(add_cli_gui_example name)
     add_executable(${name} ${name}/main.cpp)
     target_link_libraries(${name} PRIVATE CLI_GUI::CLI_GUI)
+    if(MSVC)
+        set_target_properties(${name} PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+        )
+    endif()
 endfunction()
 
 add_cli_gui_example(01_basic)

@@ -1,9 +1,11 @@
 // Example 06: Color pickers + file dialogs
 // Demonstrates ColorRGB, ColorRGBA, FileOpen, FileSave, and DirPicker widgets.
 #include <CLI_GUI/CLI_GUI.hpp>
+#include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
 
 int main(int argc, char** argv) {
+    cli_gui_init_console();
     CLI_GUI::App app{"Theme Designer"};
     app.gui_size(850, 650);
 
