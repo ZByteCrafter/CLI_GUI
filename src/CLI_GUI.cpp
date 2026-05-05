@@ -20,10 +20,10 @@ static void flush_gui_to_cli(App& app) {
     std::vector<std::string> args;
     args.push_back("gui"); // argv[0] placeholder
 
-    // Helper: collect options from an App (including subcommands)
-    auto collect = [&args](App& a) {
-        for (auto* opt : a.get_options()) {
-            const auto& meta = a.gui_meta(opt);
+    // Helper: collect options from a CLI::App*, looking up metadata from root
+    auto collect_from = [&args](App& root, CLI::App* a) {
+        for (auto* opt : a->get_options()) {
+            const auto& meta = root.gui_meta(opt);
             // Extract the first name (e.g. "--count" from "--count,-c")
             std::string raw_name = opt->get_name();
             if (raw_name.empty()) continue;
@@ -39,9 +39,8 @@ static void flush_gui_to_cli(App& app) {
 
             switch (wt) {
             case WidgetType::Checkbox:
-                if (meta.bool_state) {
-                    args.push_back(name);
-                }
+            case WidgetType::Toggle:
+                if (meta.bool_state) { args.push_back(name); }
                 break;
             case WidgetType::InputText:
             case WidgetType::Password:
@@ -50,7 +49,6 @@ static void flush_gui_to_cli(App& app) {
             case WidgetType::DirPicker:
             case WidgetType::CodeEditor:
             case WidgetType::IpAddress:
-                // Always push text options, even if empty (initialized means user saw them)
                 if (meta.initialized) {
                     args.push_back(name);
                     args.push_back(meta.text_buf);
@@ -70,6 +68,7 @@ static void flush_gui_to_cli(App& app) {
                 break;
             case WidgetType::Combo:
             case WidgetType::Radio:
+            case WidgetType::ToggleGroup:
                 if (!meta.values.empty() && meta.combo_current >= 0 &&
                     static_cast<size_t>(meta.combo_current) < meta.values.size()) {
                     args.push_back(name);
@@ -82,11 +81,9 @@ static void flush_gui_to_cli(App& app) {
         }
     };
 
-    collect(app);
+    collect_from(app, &app);
     for (auto* sub : app.get_subcommands()) {
-        // subcommands are CLI::App*, need to cast or handle separately.
-        // For now, subcommand options' metadata is on root app,
-        // so the collect() above already covers them.
+        collect_from(app, sub);
     }
 
     // Build char* array and parse

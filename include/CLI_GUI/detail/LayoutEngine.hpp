@@ -52,7 +52,8 @@ inline void render_option(App& app, CLI::Option* opt) {
     }
 
     switch (wt) {
-        case WidgetType::Checkbox: {
+        case WidgetType::Checkbox:
+        case WidgetType::Toggle: {
             if (!mut_meta.initialized) {
                 mut_meta.bool_state = !opt->results().empty();
                 mut_meta.initialized = true;
@@ -118,9 +119,20 @@ inline void render_option(App& app, CLI::Option* opt) {
             break;
         }
         case WidgetType::Combo:
-        case WidgetType::Radio: {
+        case WidgetType::Radio:
+        case WidgetType::ToggleGroup: {
             if (!mut_meta.initialized) {
                 mut_meta.initialized = true;
+                // Initialize combo_current from CLI results, if available
+                if (!opt->results().empty()) {
+                    auto& current_val = opt->results()[0];
+                    for (size_t i = 0; i < meta.values.size(); ++i) {
+                        if (meta.values[i] == current_val) {
+                            mut_meta.combo_current = static_cast<int>(i);
+                            break;
+                        }
+                    }
+                }
             }
             if (!meta.values.empty()) {
                 std::vector<const char*> items;
