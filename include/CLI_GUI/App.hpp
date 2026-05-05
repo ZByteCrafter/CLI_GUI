@@ -20,6 +20,9 @@ struct OptionGuiMeta {
     std::vector<std::string> values;
     bool has_min = false;
     bool has_max = false;
+    // Per-option runtime state (not static!)
+    char text_buf[1024] = {};
+    int combo_current = 0;
 };
 
 /// Extended CLI::App that stores GUI metadata for each option.
@@ -27,9 +30,15 @@ class App : public CLI::App {
 public:
     using CLI::App::App;
 
-    /// Get mutable GUI metadata for an option pointer.
+    /// Get GUI metadata for an option pointer (non-const access).
     OptionGuiMeta& gui_meta(CLI::Option* opt) { return option_meta_[opt]; }
+
+    /// Get GUI metadata for an option pointer (const access).
+    /// Uses the non-const pointer directly since the map key is CLI::Option*.
+    /// Safe: find() does not modify the key.
     const OptionGuiMeta& gui_meta(const CLI::Option* opt) const {
+        // Key type is CLI::Option*, so we must cast. This is safe because
+        // unordered_map::find only compares keys, never modifies them.
         auto it = option_meta_.find(const_cast<CLI::Option*>(opt));
         if (it != option_meta_.end()) return it->second;
         static const OptionGuiMeta empty;

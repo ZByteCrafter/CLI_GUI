@@ -27,7 +27,8 @@ int main(int argc, char** argv) {
     CLI_GUI_PARSE(app, argc, argv);
 
     std::cout << "Mode: " << mode << std::endl;
-    std::cout << "Config: " << config.substr(0, 50) << "..." << std::endl;
+    std::cout << "Config: " << config.substr(0, 50)
+              << (config.size() > 50 ? "..." : "") << std::endl;
     std::cout << "Output: " << output << std::endl;
 
     return 0;

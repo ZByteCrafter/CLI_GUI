@@ -7,11 +7,12 @@
 #include <iostream>
 #include <memory>
 #include <functional>
+#include <mutex>
 
 namespace CLI_GUI {
 namespace detail {
 
-/// Custom streambuf that redirects output to a callback.
+/// Thread-safe custom streambuf that redirects output to a callback.
 class CaptureStreamBuf : public std::streambuf {
 public:
     using Callback = std::function<void(const std::string&)>;
@@ -20,18 +21,20 @@ public:
 protected:
     int overflow(int c) override {
         if (c != EOF) {
+            std::lock_guard<std::mutex> lock(mtx_);
             buffer_ += static_cast<char>(c);
-            if (c == '\n') flush_buffer();
+            if (c == '\n') flush_buffer_locked();
         }
         return c;
     }
     int sync() override {
-        flush_buffer();
+        std::lock_guard<std::mutex> lock(mtx_);
+        flush_buffer_locked();
         return 0;
     }
 
 private:
-    void flush_buffer() {
+    void flush_buffer_locked() {
         if (!buffer_.empty() && callback_) {
             if (buffer_.back() == '\n') buffer_.pop_back();
             if (!buffer_.empty() && buffer_.back() == '\r') buffer_.pop_back();
@@ -41,6 +44,7 @@ private:
     }
     Callback callback_;
     std::string buffer_;
+    std::mutex mtx_;
 };
 
 /// RAII guard that replaces cout's streambuf and restores on destruction.

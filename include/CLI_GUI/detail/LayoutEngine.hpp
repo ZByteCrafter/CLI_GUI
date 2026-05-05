@@ -39,6 +39,7 @@ struct ConsoleState {
 
 inline void render_option(App& app, CLI::Option* opt) {
     const auto& meta = app.gui_meta(opt);
+    auto& mut_meta = app.gui_meta(opt);  // mutable ref for per-option state
     std::string label = meta.label.empty() ? opt->get_name() : meta.label;
     WidgetType wt = meta.widget_type;
 
@@ -62,10 +63,9 @@ inline void render_option(App& app, CLI::Option* opt) {
         case WidgetType::DirPicker:
         case WidgetType::CodeEditor:
         case WidgetType::IpAddress: {
-            static char buf[1024] = {};
-            if (buf[0] == 0 && !opt->results().empty())
-                std::strncpy(buf, opt->results()[0].c_str(), sizeof(buf)-1);
-            ImGui::InputText(label.c_str(), buf, sizeof(buf));
+            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
+                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf)-1);
+            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
             break;
         }
         case WidgetType::InputInt:
@@ -100,12 +100,11 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::Combo:
         case WidgetType::Radio: {
-            static int current = 0;
             if (!meta.values.empty()) {
                 const char* items[32];
                 int n = std::min((int)meta.values.size(), 32);
                 for (int i = 0; i < n; ++i) items[i] = meta.values[i].c_str();
-                ImGui::Combo(label.c_str(), &current, items, n);
+                ImGui::Combo(label.c_str(), &mut_meta.combo_current, items, n);
             }
             break;
         }
