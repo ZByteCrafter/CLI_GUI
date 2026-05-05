@@ -104,14 +104,29 @@ CLI_GUI_PARSE(app, argc, argv);
 ### GUI 元数据
 
 ```cpp
-app.add_option("-o", output, "输出文件")
-   ->gui_label("Output File")              // 覆写标签
-   ->gui_widget(CLI_GUI::WidgetType::FileSave)  // 指定控件
-   ->gui_min(0)->gui_max(100)              // 滑块范围 (Slider用)
-   ->gui_values({"json","csv","xml"});      // 下拉/单选值 (Combo/Radio用)
+int count = 0;
+auto* n_opt = app.add_option("-c,--count", count, "迭代次数");
 
-app.gui_title("My Tool v2.0");             // 窗口标题
-app.gui_size(1024, 768);                   // 窗口大小
+// 设置元数据 —— 通过独立函数
+CLI_GUI::gui_label(n_opt, "迭代次数", app);
+CLI_GUI::gui_widget(n_opt, CLI_GUI::WidgetType::SliderInt, app);
+CLI_GUI::gui_min(n_opt, 1, app);
+CLI_GUI::gui_max(n_opt, 100, app);
+
+// 下拉框 / 单选按钮
+std::string format;
+auto* f_opt = app.add_option("-f,--format", format, "输出格式");
+CLI_GUI::gui_widget(f_opt, CLI_GUI::WidgetType::Combo, app);
+CLI_GUI::gui_values(f_opt, {"json","csv","xml","txt"}, app);
+
+// 文件保存对话框
+std::string output;
+auto* o_opt = app.add_option("-o,--output", output, "输出文件");
+CLI_GUI::gui_widget(o_opt, CLI_GUI::WidgetType::FileSave, app);
+
+// App 级设置
+app.gui_title("My Tool v2.0");
+app.gui_size(1024, 768);
 ```
 
 ---

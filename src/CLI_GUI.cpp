@@ -99,7 +99,7 @@ static void flush_gui_to_cli(App& app) {
     }
 }
 
-void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
+void launch_gui(App& app, int argc, char** argv) {
     // Try to create GUI window. If it fails (no display), fall back to CLI.
     try {
         detail::BackendGLFW backend(app.gui_title(), app.gui_width(), app.gui_height());
@@ -191,6 +191,11 @@ void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
     } catch (const std::exception& e) {
         // Fallback: if GUI fails (no display, no GPU), run in CLI mode
         std::cerr << "CLI_GUI: GUI unavailable (" << e.what() << "). Falling back to CLI." << std::endl;
+        try {
+            app.parse(argc, argv);
+        } catch (const CLI::ParseError& pe) {
+            app.exit(pe);
+        }
     }
 }
 
