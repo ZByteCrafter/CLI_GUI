@@ -21,6 +21,7 @@ struct OptionGuiMeta {
     bool has_min = false;
     bool has_max = false;
     // Per-option runtime state (not static!)
+    bool initialized = false;       // has this option been init'd from CLI11 results?
     char text_buf[1024] = {};
     int combo_current = 0;
     bool bool_state = false;

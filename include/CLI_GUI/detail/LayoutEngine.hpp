@@ -11,6 +11,7 @@
 #include <queue>
 #include <cstring>
 #include <algorithm>
+#include <vector>
 
 namespace CLI_GUI {
 namespace detail {
@@ -52,10 +53,9 @@ inline void render_option(App& app, CLI::Option* opt) {
 
     switch (wt) {
         case WidgetType::Checkbox: {
-            // Init from results on first frame
-            static bool first_frame = true;
-            if (first_frame || mut_meta.text_buf[0] == 0) {
+            if (!mut_meta.initialized) {
                 mut_meta.bool_state = !opt->results().empty();
+                mut_meta.initialized = true;
             }
             ImGui::Checkbox(label.c_str(), &mut_meta.bool_state);
             break;
@@ -67,36 +67,51 @@ inline void render_option(App& app, CLI::Option* opt) {
         case WidgetType::DirPicker:
         case WidgetType::CodeEditor:
         case WidgetType::IpAddress: {
-            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
-                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf)-1);
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
+                mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                mut_meta.initialized = true;
+            }
             ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
             break;
         }
         case WidgetType::InputInt:
         case WidgetType::SpinInt: {
-            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
-                mut_meta.int_state = std::stoi(opt->results()[0]);
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                try { mut_meta.int_state = std::stoi(opt->results()[0]); }
+                catch (...) { mut_meta.int_state = 0; }
+                mut_meta.initialized = true;
+            }
             ImGui::InputInt(label.c_str(), &mut_meta.int_state);
             break;
         }
         case WidgetType::InputFloat:
         case WidgetType::SpinFloat: {
-            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
-                mut_meta.float_state = std::stof(opt->results()[0]);
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                try { mut_meta.float_state = std::stof(opt->results()[0]); }
+                catch (...) { mut_meta.float_state = 0.0f; }
+                mut_meta.initialized = true;
+            }
             ImGui::InputFloat(label.c_str(), &mut_meta.float_state);
             break;
         }
         case WidgetType::SliderInt: {
-            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
-                mut_meta.int_state = std::stoi(opt->results()[0]);
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                try { mut_meta.int_state = std::stoi(opt->results()[0]); }
+                catch (...) { mut_meta.int_state = 0; }
+                mut_meta.initialized = true;
+            }
             int mn = meta.has_min ? static_cast<int>(meta.min_val) : 0;
             int mx = meta.has_max ? static_cast<int>(meta.max_val) : 100;
             ImGui::SliderInt(label.c_str(), &mut_meta.int_state, mn, mx);
             break;
         }
         case WidgetType::SliderFloat: {
-            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
-                mut_meta.float_state = std::stof(opt->results()[0]);
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                try { mut_meta.float_state = std::stof(opt->results()[0]); }
+                catch (...) { mut_meta.float_state = 0.0f; }
+                mut_meta.initialized = true;
+            }
             float mn = meta.has_min ? static_cast<float>(meta.min_val) : 0.0f;
             float mx = meta.has_max ? static_cast<float>(meta.max_val) : 1.0f;
             ImGui::SliderFloat(label.c_str(), &mut_meta.float_state, mn, mx);
@@ -104,11 +119,15 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::Combo:
         case WidgetType::Radio: {
+            if (!mut_meta.initialized) {
+                mut_meta.initialized = true;
+            }
             if (!meta.values.empty()) {
-                const char* items[32];
-                int n = std::min((int)meta.values.size(), 32);
-                for (int i = 0; i < n; ++i) items[i] = meta.values[i].c_str();
-                ImGui::Combo(label.c_str(), &mut_meta.combo_current, items, n);
+                std::vector<const char*> items;
+                items.reserve(meta.values.size());
+                for (auto& v : meta.values) items.push_back(v.c_str());
+                ImGui::Combo(label.c_str(), &mut_meta.combo_current,
+                             items.data(), static_cast<int>(items.size()));
             }
             break;
         }

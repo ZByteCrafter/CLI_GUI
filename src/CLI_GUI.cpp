@@ -50,7 +50,8 @@ static void flush_gui_to_cli(App& app) {
             case WidgetType::DirPicker:
             case WidgetType::CodeEditor:
             case WidgetType::IpAddress:
-                if (meta.text_buf[0] != 0) {
+                // Always push text options, even if empty (initialized means user saw them)
+                if (meta.initialized) {
                     args.push_back(name);
                     args.push_back(meta.text_buf);
                 }

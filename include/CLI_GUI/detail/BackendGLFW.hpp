@@ -52,8 +52,20 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
-    ImGui_ImplGlfw_InitForOpenGL(window_, true);
-    ImGui_ImplOpenGL3_Init("#version 150");
+    // Wrap backend init so that if either fails, ImGui context + GLFW
+    // are properly cleaned up rather than leaked.
+    try {
+        if (!ImGui_ImplGlfw_InitForOpenGL(window_, true))
+            throw std::runtime_error("ImGui_ImplGlfw_InitForOpenGL failed");
+        if (!ImGui_ImplOpenGL3_Init("#version 150"))
+            throw std::runtime_error("ImGui_ImplOpenGL3_Init failed");
+    } catch (...) {
+        ImGui::DestroyContext();
+        glfwDestroyWindow(window_);
+        window_ = nullptr;
+        glfwTerminate();
+        throw;
+    }
 }
 
 BackendGLFW::~BackendGLFW() {
