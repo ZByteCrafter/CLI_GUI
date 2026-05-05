@@ -12,6 +12,7 @@
 #include <cstring>
 #include <algorithm>
 #include <vector>
+#include <set>
 #include <cstdio>
 
 namespace CLI_GUI {
@@ -187,9 +188,38 @@ inline void render_option(App& app, CLI::Option* opt) {
     }
 }
 
+/// Render all options from an App, grouped by CLI::OptionGroup into collapsible sections.
+/// Options without a group render outside any collapsible header.
 inline void render_options(App& app) {
+    auto groups = app.get_groups();
+    std::set<std::string> rendered_groups;
+
+    // Render options belonging to named groups (collapsible)
+    for (auto& gname : groups) {
+        if (gname.empty()) continue;
+        bool open = ImGui::CollapsingHeader(gname.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        // Collect options in this group (from both root and subcommand options)
+        // Actually we need to iterate over app's options twice:
+        // first for non-grouped, then for each group. More efficient: one pass.
+        // For simplicity, we just iterate over groups and render matching options.
+        if (open) {
+            for (auto* opt : app.get_options()) {
+                if (opt->get_group() == gname) {
+                    render_option(app, opt);
+                    rendered_groups.insert(gname);
+                }
+            }
+        } else {
+            // Still mark as rendered so they don't appear in the ungrouped fallthrough
+            rendered_groups.insert(gname);
+        }
+    }
+
+    // Render options with no group (or whose group wasn't in get_groups())
     for (auto* opt : app.get_options()) {
-        render_option(app, opt);
+        if (opt->get_group().empty() || rendered_groups.count(opt->get_group()) == 0) {
+            render_option(app, opt);
+        }
     }
 }
 
