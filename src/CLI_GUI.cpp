@@ -193,8 +193,8 @@ void launch_gui(App& app, int argc, char** argv) {
                             console.push_line("[CANCEL] Cancelled by user.");
                     });
                 } else {
-                    // No callback -- flush was done, GUI closes
-                    console.quit_requested = true;
+                    // No callback -- show status, let user close manually
+                    console.push_line("[DONE] Values collected. Close this window or click Quit to exit.");
                 }
             }
 

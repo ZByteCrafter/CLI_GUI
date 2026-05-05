@@ -8,7 +8,7 @@
 #include <sstream>
 #include <atomic>
 #include <mutex>
-#include <queue>
+#include <deque>
 #include <cstring>
 #include <algorithm>
 #include <vector>
@@ -19,24 +19,29 @@ namespace CLI_GUI {
 namespace detail {
 
 struct ConsoleState {
-    std::mutex mtx;
-    std::queue<std::string> lines;
+    static constexpr size_t kMaxLines = 1000;
+
+    mutable std::mutex mtx;
+    std::deque<std::string> buffer;
     std::atomic<bool> running{false};
     bool show_console = true;
     int console_height = 150;
     bool run_requested = false;
     bool quit_requested = false;
 
+    /// Append a line. If over limit, drop oldest.
     void push_line(const std::string& line) {
         std::lock_guard<std::mutex> lock(mtx);
-        lines.push(line);
+        buffer.push_back(line);
+        while (buffer.size() > kMaxLines) {
+            buffer.pop_front();
+        }
     }
-    std::string pop_line() {
+
+    /// Return a snapshot of all buffered lines (thread-safe copy).
+    std::deque<std::string> snapshot() const {
         std::lock_guard<std::mutex> lock(mtx);
-        if (lines.empty()) return "";
-        auto s = lines.front();
-        lines.pop();
-        return s;
+        return buffer;
     }
 };
 
@@ -253,8 +258,9 @@ inline void render_console(ConsoleState& console) {
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
             true, ImGuiWindowFlags_HorizontalScrollbar);
-        std::string line;
-        while (!(line = console.pop_line()).empty()) {
+        // Snapshot all buffered lines (does not consume them)
+        auto snapshot = console.snapshot();
+        for (auto& line : snapshot) {
             ImGui::TextUnformatted(line.c_str());
         }
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
