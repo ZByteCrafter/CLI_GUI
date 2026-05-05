@@ -27,6 +27,8 @@ struct OptionGuiMeta {
     bool bool_state = false;
     int int_state = 0;
     float float_state = 0.0f;
+    float color3[3] = {1.0f, 1.0f, 1.0f};
+    float color4[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 };
 
 /// Extended CLI::App that stores GUI metadata for each option.

@@ -12,6 +12,7 @@
 #include <cstring>
 #include <algorithm>
 #include <vector>
+#include <cstdio>
 
 namespace CLI_GUI {
 namespace detail {
@@ -141,6 +142,43 @@ inline void render_option(App& app, CLI::Option* opt) {
                 ImGui::Combo(label.c_str(), &mut_meta.combo_current,
                              items.data(), static_cast<int>(items.size()));
             }
+            break;
+        }
+        case WidgetType::ColorRGB: {
+            if (!mut_meta.initialized) {
+                mut_meta.initialized = true;
+                if (!opt->results().empty()) {
+                    // Try to parse "r g b" or "#RRGGBB" from results
+                    sscanf(opt->results()[0].c_str(), "%f %f %f",
+                           &mut_meta.color3[0], &mut_meta.color3[1], &mut_meta.color3[2]);
+                }
+            }
+            ImGui::ColorEdit3(label.c_str(), mut_meta.color3);
+            break;
+        }
+        case WidgetType::ColorRGBA: {
+            if (!mut_meta.initialized) {
+                mut_meta.initialized = true;
+                if (!opt->results().empty()) {
+                    sscanf(opt->results()[0].c_str(), "%f %f %f %f",
+                           &mut_meta.color4[0], &mut_meta.color4[1],
+                           &mut_meta.color4[2], &mut_meta.color4[3]);
+                }
+            }
+            ImGui::ColorEdit4(label.c_str(), mut_meta.color4);
+            break;
+        }
+        // Not yet fully implemented — degrade to InputText
+        case WidgetType::List:
+        case WidgetType::MultiSelect:
+        case WidgetType::Duration:
+        case WidgetType::TagList: {
+            if (!mut_meta.initialized && !opt->results().empty()) {
+                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
+                mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                mut_meta.initialized = true;
+            }
+            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
             break;
         }
         default:

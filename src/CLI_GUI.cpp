@@ -75,7 +75,31 @@ static void flush_gui_to_cli(App& app) {
                     args.push_back(meta.values[meta.combo_current]);
                 }
                 break;
-            default:
+            case WidgetType::ColorRGB: {
+                args.push_back(name);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
+                         meta.color3[0], meta.color3[1], meta.color3[2]);
+                args.push_back(buf);
+                break;
+            }
+            case WidgetType::ColorRGBA: {
+                args.push_back(name);
+                char buf[80];
+                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
+                         meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
+                args.push_back(buf);
+                break;
+            }
+            // Degraded to InputText — use text_buf
+            case WidgetType::List:
+            case WidgetType::MultiSelect:
+            case WidgetType::Duration:
+            case WidgetType::TagList:
+                if (meta.initialized) {
+                    args.push_back(name);
+                    args.push_back(meta.text_buf);
+                }
                 break;
             }
         }
