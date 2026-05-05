@@ -8,8 +8,98 @@
 #include <thread>
 #include <sstream>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <cstring>
 
 namespace CLI_GUI {
+
+/// Collect values from per-option GUI state and write them back to CLI11.
+/// Builds a fake argv and calls app.parse() to trigger validation and callbacks.
+static void flush_gui_to_cli(App& app) {
+    std::vector<std::string> args;
+    args.push_back("gui"); // argv[0] placeholder
+
+    // Helper: collect options from an App (including subcommands)
+    auto collect = [&args](App& a) {
+        for (auto* opt : a.get_options()) {
+            const auto& meta = a.gui_meta(opt);
+            // Extract the first name (e.g. "--count" from "--count,-c")
+            std::string raw_name = opt->get_name();
+            if (raw_name.empty()) continue;
+            auto comma = raw_name.find(',');
+            std::string name = (comma != std::string::npos)
+                               ? raw_name.substr(0, comma) : raw_name;
+
+            WidgetType wt = meta.widget_type;
+            if (wt == WidgetType::Auto) {
+                wt = (opt->get_expected_min() == 0)
+                     ? WidgetType::Checkbox : WidgetType::InputText;
+            }
+
+            switch (wt) {
+            case WidgetType::Checkbox:
+                if (meta.bool_state) {
+                    args.push_back(name);
+                }
+                break;
+            case WidgetType::InputText:
+            case WidgetType::Password:
+            case WidgetType::FileOpen:
+            case WidgetType::FileSave:
+            case WidgetType::DirPicker:
+            case WidgetType::CodeEditor:
+            case WidgetType::IpAddress:
+                if (meta.text_buf[0] != 0) {
+                    args.push_back(name);
+                    args.push_back(meta.text_buf);
+                }
+                break;
+            case WidgetType::InputInt:
+            case WidgetType::SpinInt:
+            case WidgetType::SliderInt:
+                args.push_back(name);
+                args.push_back(std::to_string(meta.int_state));
+                break;
+            case WidgetType::InputFloat:
+            case WidgetType::SpinFloat:
+            case WidgetType::SliderFloat:
+                args.push_back(name);
+                args.push_back(std::to_string(meta.float_state));
+                break;
+            case WidgetType::Combo:
+            case WidgetType::Radio:
+                if (!meta.values.empty() && meta.combo_current >= 0 &&
+                    static_cast<size_t>(meta.combo_current) < meta.values.size()) {
+                    args.push_back(name);
+                    args.push_back(meta.values[meta.combo_current]);
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    };
+
+    collect(app);
+    for (auto* sub : app.get_subcommands()) {
+        // subcommands are CLI::App*, need to cast or handle separately.
+        // For now, subcommand options' metadata is on root app,
+        // so the collect() above already covers them.
+    }
+
+    // Build char* array and parse
+    std::vector<const char*> argv;
+    for (auto& a : args) argv.push_back(a.c_str());
+    if (argv.size() > 1) {
+        try {
+            app.parse(static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+        } catch (const CLI::ParseError& e) {
+            // GUI already validated; parse errors are unexpected but non-fatal
+            std::cerr << "CLI_GUI: parse error after GUI input: " << e.what() << std::endl;
+        }
+    }
+}
 
 void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
     // Try to create GUI window. If it fails (no display), fall back to CLI.
@@ -61,6 +151,10 @@ void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
             // Handle Run button
             if (console.run_requested && !console.running) {
                 console.run_requested = false;
+
+                // Flush GUI values back to CLI11 before executing
+                flush_gui_to_cli(app);
+
                 auto cb = app.gui_callback();
                 if (cb) {
                     console.running = true;
@@ -77,7 +171,7 @@ void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
                             console.push_line("[CANCEL] Cancelled by user.");
                     });
                 } else {
-                    // No callback -- GUI will just close
+                    // No callback -- flush was done, GUI closes
                     console.quit_requested = true;
                 }
             }
@@ -87,6 +181,9 @@ void launch_gui(App& app, int /*argc*/, char** /*argv*/) {
                 console.quit_requested = true;
             }
         }
+
+        // On exit, flush values one more time (in case user quit without Run)
+        flush_gui_to_cli(app);
 
         // Wait for worker thread
         app.request_cancel();

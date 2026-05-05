@@ -52,8 +52,12 @@ inline void render_option(App& app, CLI::Option* opt) {
 
     switch (wt) {
         case WidgetType::Checkbox: {
-            bool val = !opt->results().empty();
-            ImGui::Checkbox(label.c_str(), &val);
+            // Init from results on first frame
+            static bool first_frame = true;
+            if (first_frame || mut_meta.text_buf[0] == 0) {
+                mut_meta.bool_state = !opt->results().empty();
+            }
+            ImGui::Checkbox(label.c_str(), &mut_meta.bool_state);
             break;
         }
         case WidgetType::InputText:
@@ -70,32 +74,32 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::InputInt:
         case WidgetType::SpinInt: {
-            int val = 0;
-            if (!opt->results().empty()) val = std::stoi(opt->results()[0]);
-            ImGui::InputInt(label.c_str(), &val);
+            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
+                mut_meta.int_state = std::stoi(opt->results()[0]);
+            ImGui::InputInt(label.c_str(), &mut_meta.int_state);
             break;
         }
         case WidgetType::InputFloat:
         case WidgetType::SpinFloat: {
-            float val = 0.0f;
-            if (!opt->results().empty()) val = std::stof(opt->results()[0]);
-            ImGui::InputFloat(label.c_str(), &val);
+            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
+                mut_meta.float_state = std::stof(opt->results()[0]);
+            ImGui::InputFloat(label.c_str(), &mut_meta.float_state);
             break;
         }
         case WidgetType::SliderInt: {
-            int val = 0;
-            if (!opt->results().empty()) val = std::stoi(opt->results()[0]);
+            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
+                mut_meta.int_state = std::stoi(opt->results()[0]);
             int mn = meta.has_min ? static_cast<int>(meta.min_val) : 0;
             int mx = meta.has_max ? static_cast<int>(meta.max_val) : 100;
-            ImGui::SliderInt(label.c_str(), &val, mn, mx);
+            ImGui::SliderInt(label.c_str(), &mut_meta.int_state, mn, mx);
             break;
         }
         case WidgetType::SliderFloat: {
-            float val = 0.0f;
-            if (!opt->results().empty()) val = std::stof(opt->results()[0]);
+            if (mut_meta.text_buf[0] == 0 && !opt->results().empty())
+                mut_meta.float_state = std::stof(opt->results()[0]);
             float mn = meta.has_min ? static_cast<float>(meta.min_val) : 0.0f;
             float mx = meta.has_max ? static_cast<float>(meta.max_val) : 1.0f;
-            ImGui::SliderFloat(label.c_str(), &val, mn, mx);
+            ImGui::SliderFloat(label.c_str(), &mut_meta.float_state, mn, mx);
             break;
         }
         case WidgetType::Combo:

@@ -23,6 +23,9 @@ struct OptionGuiMeta {
     // Per-option runtime state (not static!)
     char text_buf[1024] = {};
     int combo_current = 0;
+    bool bool_state = false;
+    int int_state = 0;
+    float float_state = 0.0f;
 };
 
 /// Extended CLI::App that stores GUI metadata for each option.
