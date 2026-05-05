@@ -1,6 +1,14 @@
-build/
-build_gui/
+build*/
 cmake-build-*/
 *.user
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.lib
+*.dll
+*.exp
 .DS_Store
 Thumbs.db
+CMakeUserPresets.json
