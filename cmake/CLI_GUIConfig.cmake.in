@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+include("${CMAKE_CURRENT_LIST_DIR}/CLI_GUI_Targets.cmake")
+
+# Note: GUI component (CLI_GUI_Gui) requires building from source.
+# Use add_subdirectory() with CLI_GUI_ENABLE_GUI=ON instead of find_package(COMPONENTS Gui).
+
+check_required_components(CLI_GUI)

@@ -29,14 +29,14 @@ if(CLI_GUI_ENABLE_GUI)
 
     # Vendor imgui
     add_subdirectory(vendor/imgui EXCLUDE_FROM_ALL)
-    target_link_libraries(CLI_GUI INTERFACE imgui)
+    target_link_libraries(CLI_GUI INTERFACE $<BUILD_INTERFACE:imgui>)
     target_include_directories(CLI_GUI INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui_backends
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui_backends>
     )
 
     # Vendor glfw
     add_subdirectory(vendor/glfw EXCLUDE_FROM_ALL)
-    target_link_libraries(CLI_GUI INTERFACE glfw)
+    target_link_libraries(CLI_GUI INTERFACE $<BUILD_INTERFACE:glfw>)
 
     # Compiled GUI translation unit (includes imgui backends)
     add_library(CLI_GUI_Gui STATIC
@@ -49,7 +49,7 @@ if(CLI_GUI_ENABLE_GUI)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui_backends
     )
-    target_link_libraries(CLI_GUI INTERFACE CLI_GUI_Gui)
+    target_link_libraries(CLI_GUI INTERFACE $<BUILD_INTERFACE:CLI_GUI_Gui>)
 endif()
 
 # Tests
@@ -62,3 +62,40 @@ endif()
 if(CLI_GUI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+# ── Install rules (header-only mode only; GUI mode needs add_subdirectory) ──
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+install(DIRECTORY include/CLI_GUI
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(DIRECTORY vendor/CLI11/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(TARGETS CLI11 CLI_GUI
+    EXPORT CLI_GUI_Targets
+)
+
+install(EXPORT CLI_GUI_Targets
+    FILE CLI_GUI_Targets.cmake
+    NAMESPACE CLI_GUI::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CLI_GUI
+)
+
+configure_package_config_file(
+    cmake/CLI_GUIConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/CLI_GUIConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CLI_GUI
+)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/CLI_GUIConfigVersion.cmake
+    COMPATIBILITY SameMajorVersion
+)
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/CLI_GUIConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/CLI_GUIConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CLI_GUI
+)
