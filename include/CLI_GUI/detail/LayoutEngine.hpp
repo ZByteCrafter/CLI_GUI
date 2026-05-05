@@ -240,7 +240,7 @@ inline void render_options(App& app) {
 }
 
 inline void render_subcommands(App& app, ConsoleState& console) {
-    auto& subs = app.get_subcommands();
+    auto subs = app.get_subcommands();
     if (subs.empty()) return;
 
     ImGui::Separator();
