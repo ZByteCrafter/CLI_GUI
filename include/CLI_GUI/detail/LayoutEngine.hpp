@@ -240,7 +240,8 @@ inline void render_options(App& app) {
 }
 
 inline void render_subcommands(App& app, ConsoleState& console) {
-    auto subs = app.get_subcommands();
+    // Use filter overload — iterates registered subcommands, not parsed ones
+    auto subs = app.get_subcommands([](CLI::App*) { return true; });
     if (subs.empty()) return;
 
     ImGui::Separator();
