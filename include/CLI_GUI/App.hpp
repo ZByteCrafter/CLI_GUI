@@ -1,45 +1,112 @@
 #pragma once
 #include <CLI/CLI.hpp>
+#include <CLI_GUI/WidgetType.hpp>
+#include <CLI_GUI/WidgetMapper.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include <functional>
+#include <atomic>
 
 namespace CLI_GUI {
 
-enum class WidgetType {
-    Auto = 0,
-    Checkbox,
-    Toggle,
-    InputText,
-    InputInt,
-    InputFloat,
-    SliderInt,
-    SliderFloat,
-    SpinInt,
-    SpinFloat,
-    Combo,
-    Radio,
-    FileOpen,
-    FileSave,
-    DirPicker,
-    ColorRGB,
-    ColorRGBA,
-    List,
-    MultiSelect,
-    Password,
-    IpAddress,
-    Duration,
-    CodeEditor,
-    TagList,
-    ToggleGroup
+/// Per-option GUI metadata stored in App.
+struct OptionGuiMeta {
+    WidgetType widget_type = WidgetType::Auto;
+    std::string label;
+    std::string group_name;
+    double min_val = 0.0;
+    double max_val = 100.0;
+    std::vector<std::string> values;
+    bool has_min = false;
+    bool has_max = false;
 };
 
-/// Wrapper around CLI::App with GUI metadata.
+/// Extended CLI::App that stores GUI metadata for each option.
 class App : public CLI::App {
 public:
     using CLI::App::App;
+
+    /// Get mutable GUI metadata for an option pointer.
+    OptionGuiMeta& gui_meta(CLI::Option* opt) { return option_meta_[opt]; }
+    const OptionGuiMeta& gui_meta(const CLI::Option* opt) const {
+        auto it = option_meta_.find(const_cast<CLI::Option*>(opt));
+        if (it != option_meta_.end()) return it->second;
+        static const OptionGuiMeta empty;
+        return empty;
+    }
+
+    // App-level GUI settings
+    App* gui_title(std::string t)     { gui_title_ = std::move(t); return this; }
+    App* gui_size(int w, int h)       { gui_width_ = w; gui_height_ = h; return this; }
+    App* gui_show_console(bool s)     { gui_show_console_ = s; return this; }
+    App* gui_console_height(int h)    { gui_console_height_ = h; return this; }
+    App* set_callback(std::function<void()> cb) { gui_callback_ = std::move(cb); return this; }
+
+    // App-level accessors
+    std::string gui_title() const     { return gui_title_.empty() ? get_name() : gui_title_; }
+    int gui_width() const             { return gui_width_; }
+    int gui_height() const            { return gui_height_; }
+    bool gui_show_console() const     { return gui_show_console_; }
+    int gui_console_height() const    { return gui_console_height_; }
+    std::function<void()> gui_callback() const { return gui_callback_; }
+
+    // Access to metadata map (for LayoutEngine)
+    std::unordered_map<CLI::Option*, OptionGuiMeta>& option_meta_map() { return option_meta_; }
+    const std::unordered_map<CLI::Option*, OptionGuiMeta>& option_meta_map() const { return option_meta_; }
+
+    // Update progress from worker thread (atomic, thread-safe)
+    void update_progress(float pct) { progress_.store(pct, std::memory_order_release); }
+    float get_progress() const { return progress_.load(std::memory_order_acquire); }
+
+    // Cancel flag for worker thread
+    void request_cancel() { cancelled_.store(true, std::memory_order_release); }
+    bool is_cancelled() const { return cancelled_.load(std::memory_order_acquire); }
+    void reset_cancel() { cancelled_.store(false, std::memory_order_release); }
+
+private:
+    std::unordered_map<CLI::Option*, OptionGuiMeta> option_meta_;
+    std::string gui_title_;
+    int gui_width_ = 800;
+    int gui_height_ = 600;
+    bool gui_show_console_ = true;
+    int gui_console_height_ = 150;
+    std::function<void()> gui_callback_;
+    std::atomic<float> progress_{0.0f};
+    std::atomic<bool> cancelled_{false};
 };
 
-/// Macro: argc==1 launches GUI; otherwise normal CLI11 parse.
+// ---- Free functions to set GUI metadata on CLI::Option pointers ----
+
+inline CLI::Option* gui_label(CLI::Option* opt, const std::string& label, App& app) {
+    app.gui_meta(opt).label = label;
+    return opt;
+}
+inline CLI::Option* gui_widget(CLI::Option* opt, WidgetType wt, App& app) {
+    app.gui_meta(opt).widget_type = wt;
+    return opt;
+}
+inline CLI::Option* gui_group(CLI::Option* opt, const std::string& g, App& app) {
+    app.gui_meta(opt).group_name = g;
+    return opt;
+}
+inline CLI::Option* gui_min(CLI::Option* opt, double v, App& app) {
+    app.gui_meta(opt).min_val = v;
+    app.gui_meta(opt).has_min = true;
+    return opt;
+}
+inline CLI::Option* gui_max(CLI::Option* opt, double v, App& app) {
+    app.gui_meta(opt).max_val = v;
+    app.gui_meta(opt).has_max = true;
+    return opt;
+}
+inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, App& app) {
+    app.gui_meta(opt).values = std::move(vals);
+    return opt;
+}
+
+// ---- CLI_GUI_PARSE macro ----
+
 #ifdef CLI_GUI_HAS_GUI
 #define CLI_GUI_PARSE(app, argc, argv)                    \
     do {                                                   \

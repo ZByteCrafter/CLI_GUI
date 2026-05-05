@@ -3,7 +3,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <CLI_GUI/App.hpp>
+#include <CLI_GUI/WidgetType.hpp>
 
 namespace CLI_GUI {
 
