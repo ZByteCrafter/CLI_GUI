@@ -31,6 +31,15 @@ TEST_CASE("WidgetType from float infers InputFloat", "[widget_mapper]") {
     REQUIRE(CLI_GUI::widget_type_for<float>() == CLI_GUI::WidgetType::InputFloat);
 }
 
+TEST_CASE("WidgetType from unsigned int infers InputInt", "[widget_mapper]") {
+    REQUIRE(CLI_GUI::widget_type_for<unsigned int>() == CLI_GUI::WidgetType::InputInt);
+}
+
+TEST_CASE("WidgetType from unknown type infers Auto", "[widget_mapper]") {
+    struct CustomType {};
+    REQUIRE(CLI_GUI::widget_type_for<CustomType>() == CLI_GUI::WidgetType::Auto);
+}
+
 TEST_CASE("to_string converts WidgetType to name", "[widget_mapper]") {
     REQUIRE(CLI_GUI::to_string(CLI_GUI::WidgetType::Checkbox) == std::string("Checkbox"));
     REQUIRE(CLI_GUI::to_string(CLI_GUI::WidgetType::InputInt) == std::string("InputInt"));

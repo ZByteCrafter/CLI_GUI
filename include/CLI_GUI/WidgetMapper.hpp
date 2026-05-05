@@ -7,7 +7,7 @@
 
 namespace CLI_GUI {
 
-inline const char* to_string(WidgetType wt) {
+inline constexpr const char* to_string(WidgetType wt) {
     switch (wt) {
         case WidgetType::Auto:        return "Auto";
         case WidgetType::Checkbox:    return "Checkbox";
