@@ -48,6 +48,29 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);
 
+    // Set a default window icon (32x32, blue-purple gradient)
+    {
+        static unsigned char icon_pixels[32 * 32 * 4];
+        static bool icon_built = false;
+        if (!icon_built) {
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    int i = (y * 32 + x) * 4;
+                    icon_pixels[i+0] = 220;                           // B
+                    icon_pixels[i+1] = (unsigned char)(50 + y*6);    // G
+                    icon_pixels[i+2] = (unsigned char)(180 + x*2);   // R
+                    icon_pixels[i+3] = 255;                           // A
+                }
+            }
+            icon_built = true;
+        }
+        GLFWimage img;
+        img.width  = 32;
+        img.height = 32;
+        img.pixels = icon_pixels;
+        glfwSetWindowIcon(window_, 1, &img);
+    }
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
