@@ -136,8 +136,12 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
             catch (const CLI::ParseError& e) {              \
                 (app).exit(e);                              \
             }                                               \
-            auto __main = (app).gui_main();                \
-            if (__main) __main();                           \
+            auto __cb = (app).gui_callback();              \
+            if (__cb) { __cb(); }                          \
+            else {                                         \
+                auto __main = (app).gui_main();            \
+                if (__main) __main();                      \
+            }                                              \
         }                                                   \
     } while (0)
 #else
@@ -147,8 +151,12 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
         catch (const CLI::ParseError& e) {                  \
             (app).exit(e);                                  \
         }                                                   \
-        auto __main = (app).gui_main();                    \
-        if (__main) __main();                               \
+        auto __cb = (app).gui_callback();                  \
+        if (__cb) { __cb(); }                              \
+        else {                                             \
+            auto __main = (app).gui_main();                \
+            if (__main) __main();                          \
+        }                                                  \
     } while (0)
 #endif
 

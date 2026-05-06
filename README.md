@@ -135,16 +135,16 @@ app.set_main([&]() {
 CLI_GUI_PARSE(app, argc, argv);
 // CLI 模式：parse 后同步执行   GUI 模式：Run 触发，在线程中执行，输出在控制台面板
 
-// 方式二：set_callback — 长耗时 + 进度条
+// 方式二：set_callback — 长耗时 + 进度条（CLI/GUI 均可用）
 app.set_callback([&]() {
     for (int i = 1; i <= steps; ++i) {
-        if (app.is_cancelled()) return;            // 响应 Cancel
+        if (app.is_cancelled()) return;            // GUI 响应 Cancel
         std::cout << "Step " << i << std::endl;
-        app.update_progress((float)i / steps);
+        app.update_progress((float)i / steps);      // GUI 更新进度条
     }
 });
 CLI_GUI_PARSE(app, argc, argv);
-// CLI 模式：只解析参数（不执行回调）   GUI 模式：Run 触发，带进度条
+// CLI 模式：parse 后同步执行（无进度条）   GUI 模式：Run 触发，带进度条+Cancel
 ```
 
 ### `CLI_GUI_PARSE` 宏
