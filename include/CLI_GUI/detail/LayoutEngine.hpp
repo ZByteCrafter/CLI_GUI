@@ -44,7 +44,28 @@ struct ConsoleState {
         std::lock_guard<std::mutex> lock(mtx);
         return buffer;
     }
+
+    /// Clear all buffered lines (thread-safe).
+    void clear() {
+        std::lock_guard<std::mutex> lock(mtx);
+        buffer.clear();
+    }
 };
+
+/// Detect log level from a line prefix and return the display color.
+inline ImVec4 detect_log_level(const std::string& line) {
+    if (line.compare(0, 7, "[ERROR]") == 0 || line.compare(0, 7, "[FATAL]") == 0)
+        return ImVec4(1.0f, 0.20f, 0.20f, 1.0f);   // red
+    if (line.compare(0, 6, "[WARN]")  == 0 || line.compare(0, 9, "[WARNING]") == 0)
+        return ImVec4(1.0f, 0.70f, 0.10f, 1.0f);   // orange
+    if (line.compare(0, 6, "[DONE]")  == 0 || line.compare(0, 4, "[OK]") == 0)
+        return ImVec4(0.15f, 0.90f, 0.25f, 1.0f);   // green
+    if (line.compare(0, 8, "[CANCEL]") == 0)
+        return ImVec4(0.50f, 0.50f, 0.50f, 1.0f);   // gray
+    if (line.compare(0, 6, "[INFO]")  == 0 || line.compare(0, 7, "[DEBUG]") == 0)
+        return ImVec4(0.55f, 0.70f, 1.0f, 1.0f);   // light blue
+    return ImVec4(0.90f, 0.90f, 0.90f, 1.0f);        // light gray (default)
+}
 
 inline void render_option(App& app, CLI::Option* opt) {
     const auto& meta = app.gui_meta(opt);
@@ -282,14 +303,20 @@ inline void render_subcommands(App& app, ConsoleState& console) {
 inline void render_console(ConsoleState& console) {
     if (!console.show_console) return;
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+    bool header_open = ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen);
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 50);
+    if (ImGui::SmallButton("Clear")) {
+        console.clear();
+    }
+
+    if (header_open) {
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
             true, ImGuiWindowFlags_HorizontalScrollbar);
-        // Snapshot all buffered lines (does not consume them)
         auto snapshot = console.snapshot();
         for (auto& line : snapshot) {
-            ImGui::TextUnformatted(line.c_str());
+            ImGui::TextColored(detect_log_level(line), "%s", line.c_str());
         }
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
