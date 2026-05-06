@@ -188,6 +188,7 @@ CLI_GUI_PARSE(app, argc, argv);
 | `06_colors_and_files` | 主题设计器 | ColorRGB/RGBA、FileOpen/Save/DirPicker |
 | `07_positional_and_vectors` | 批量重命名 | 位置参数、vector 选项 |
 | `08_full_app` | 媒体转换套件 | 综合示例（子命令+分组+回调+颜色） |
+| `09_positional` | 问候器 | 位置参数、Required、多值、expected(N) |
 
 运行：
 
