@@ -279,16 +279,107 @@ inline void render_option(App& app, CLI::Option* opt) {
             ImGui::PopID();
             break;
         }
-        // Not yet fully implemented — degrade to InputText
-        case WidgetType::List:
-        case WidgetType::MultiSelect:
-        case WidgetType::TagList: {
-            if (!mut_meta.initialized && !opt->results().empty()) {
-                std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
-                mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+        case WidgetType::List: {
+            if (!mut_meta.initialized) {
+                mut_meta.list_items.clear();
+                for (auto& r : opt->results()) {
+                    mut_meta.list_items.push_back(r);
+                }
                 mut_meta.initialized = true;
             }
-            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
+            ImGui::TextUnformatted(label.c_str());
+            ImGui::PushID(opt);
+            for (int i = 0; i < (int)mut_meta.list_items.size(); ++i) {
+                ImGui::PushID(i);
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30);
+                char buf[256] = {};
+                std::strncpy(buf, mut_meta.list_items[i].c_str(), 255);
+                ImGui::InputText("##li", buf, sizeof(buf));
+                mut_meta.list_items[i] = buf;
+                ImGui::SameLine();
+                if (ImGui::SmallButton("-")) {
+                    mut_meta.list_items.erase(mut_meta.list_items.begin() + i);
+                    ImGui::PopID();
+                    break;
+                }
+                ImGui::PopID();
+            }
+            if (ImGui::SmallButton("+")) {
+                mut_meta.list_items.emplace_back();
+            }
+            ImGui::PopID();
+            break;
+        }
+        case WidgetType::TagList: {
+            if (!mut_meta.initialized) {
+                mut_meta.list_items.clear();
+                for (auto& r : opt->results()) {
+                    mut_meta.list_items.push_back(r);
+                }
+                mut_meta.initialized = true;
+            }
+            ImGui::TextUnformatted(label.c_str());
+            ImGui::PushID(opt);
+            for (int i = 0; i < (int)mut_meta.list_items.size(); ++i) {
+                ImGui::PushID(i);
+                ImGui::TextUnformatted(mut_meta.list_items[i].c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("x")) {
+                    mut_meta.list_items.erase(mut_meta.list_items.begin() + i);
+                    ImGui::PopID();
+                    break;
+                }
+                ImGui::PopID();
+            }
+            static char tag_buf[128] = {};
+            ImGui::SetNextItemWidth(120);
+            if (ImGui::InputText("##tag_input", tag_buf, sizeof(tag_buf),
+                                 ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (tag_buf[0]) {
+                    mut_meta.list_items.emplace_back(tag_buf);
+                    tag_buf[0] = 0;
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Add")) {
+                if (tag_buf[0]) {
+                    mut_meta.list_items.emplace_back(tag_buf);
+                    tag_buf[0] = 0;
+                }
+            }
+            ImGui::PopID();
+            break;
+        }
+        case WidgetType::MultiSelect: {
+            if (!mut_meta.initialized) {
+                mut_meta.list_items.clear();
+                for (auto& r : opt->results()) {
+                    mut_meta.list_items.push_back(r);
+                }
+                mut_meta.initialized = true;
+            }
+            ImGui::TextUnformatted(label.c_str());
+            ImGui::PushID(opt);
+            for (int i = 0; i < (int)meta.values.size(); ++i) {
+                bool selected = false;
+                for (auto& sel : mut_meta.list_items) {
+                    if (sel == meta.values[i]) { selected = true; break; }
+                }
+                ImGui::PushID(i);
+                if (ImGui::Checkbox(meta.values[i].c_str(), &selected)) {
+                    if (selected) {
+                        mut_meta.list_items.push_back(meta.values[i]);
+                    } else {
+                        mut_meta.list_items.erase(
+                            std::remove(mut_meta.list_items.begin(),
+                                        mut_meta.list_items.end(),
+                                        meta.values[i]),
+                            mut_meta.list_items.end());
+                    }
+                }
+                ImGui::PopID();
+            }
+            ImGui::PopID();
             break;
         }
         default:

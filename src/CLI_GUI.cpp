@@ -95,13 +95,23 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 args.push_back(buf);
                 break;
             }
-            // Degraded to InputText — use text_buf
             case WidgetType::List:
-            case WidgetType::MultiSelect:
             case WidgetType::TagList:
                 if (meta.initialized) {
-                    args.push_back(name);
-                    args.push_back(meta.text_buf);
+                    for (auto& item : meta.list_items) {
+                        if (!item.empty()) {
+                            args.push_back(name);
+                            args.push_back(item);
+                        }
+                    }
+                }
+                break;
+            case WidgetType::MultiSelect:
+                if (meta.initialized) {
+                    for (auto& item : meta.list_items) {
+                        args.push_back(name);
+                        args.push_back(item);
+                    }
                 }
                 break;
             }
