@@ -153,7 +153,9 @@ CLI_GUI_PARSE(app, argc, argv);
 // 展开为:
 // if (argc <= 1)  →  launch_gui(app, argc, argv);   // GUI 模式
 // else           →  app.parse(argc, argv);           // CLI 模式
-//                   if (gui_main) gui_main();         // 执行 set_main
+//                   if (gui_callback) gui_callback();  // callback 优先
+//                   else if (gui_main) gui_main();      // 否则 main
+// --help/-h 时自动跳过回调，仅打印帮助
 ```
 
 ---
@@ -168,11 +170,14 @@ CLI_GUI_PARSE(app, argc, argv);
 | 选择 | `Combo` `Radio` `ToggleGroup` `MultiSelect` |
 | 文件 | `FileOpen` `FileSave` `DirPicker` `FileOrDir` |
 | 颜色 | `ColorRGB` `ColorRGBA` |
-| 集合 | `List` `TagList` |
-| 其他 | `IpAddress` `Duration` |
+| 集合 | `List` `TagList` | List 支持 +/- 按钮增删；TagList 支持回车添 Chip |
+| 其他 | `IpAddress` `Duration` | Duration 为 SpinInt + 单位下拉（sec/min/hr/day） |
+
 
 > **自动推断**：`int` → `InputInt`，`bool` → `Checkbox`，`std::string` → `InputText`，`std::vector<T>` → `List`。
 > 可通过 `gui_widget()` 手动覆写任意控件类型。
+>
+> **文件控件**（`FileOpen` / `FileSave` / `DirPicker` / `FileOrDir`）右侧有 `[Browse]` 按钮打开系统原生文件对话框，也支持从资源管理器**拖放**文件路径到文本框。
 
 ---
 
@@ -185,8 +190,8 @@ CLI_GUI_PARSE(app, argc, argv);
 | `03_custom_widgets` | 自定义控件 | Password、Radio、CodeEditor、FileSave |
 | `04_long_task` | 长耗时任务 | `set_callback`、进度条、Cancel |
 | `05_option_groups` | 图片处理器 | `add_option_group` → 折叠面板 |
-| `06_colors_and_files` | 主题设计器 | ColorRGB/RGBA、FileOpen/Save/DirPicker |
-| `07_positional_and_vectors` | 批量重命名 | 位置参数、vector 选项 |
+| `06_colors_and_files` | 主题设计器 | ColorRGB/RGBA、FileOpen/Save/DirPicker/FileOrDir、拖放文件 |
+| `07_positional_and_vectors` | 批量重命名 | 位置参数、vector 选项、Required、Duration |
 | `08_full_app` | 媒体转换套件 | 综合示例（子命令+分组+回调+颜色） |
 | `09_positional` | 问候器 | 位置参数、Required、多值、expected(N) |
 
@@ -212,12 +217,12 @@ cmake -B build -DCLI_GUI_ENABLE_GUI=OFF
 cmake -B build_gui -DCLI_GUI_ENABLE_GUI=ON
 cmake --build build_gui
 
-# 运行 33 个测试
+# 运行 41 个测试
 cmake -B build -DCLI_GUI_BUILD_TESTS=ON -DCLI_GUI_ENABLE_GUI=OFF
 cmake --build build
 build/tests/Debug/cli_gui_tests.exe
 
-# 构建全部 8 个示例
+# 构建全部 9 个示例
 cmake -B build_examples -DCLI_GUI_ENABLE_GUI=ON -DCLI_GUI_BUILD_EXAMPLES=ON
 cmake --build build_examples
 ```
@@ -247,8 +252,8 @@ CLI11_GUI/
 │   ├── imgui/                #   Dear ImGui v1.91
 │   ├── imgui_backends/       #   GLFW + OpenGL3 后端
 │   └── glfw/                 #   GLFW 3.4
-├── tests/                    # 33 个单元测试
-├── examples/                 # 8 个完整示例
+├── tests/                    # 41 个单元测试
+├── examples/                 # 9 个完整示例
 ├── resources/                # Windows 资源文件（.ico + .rc）
 ├── cmake/                    # CMake 包配置
 └── CMakeLists.txt
