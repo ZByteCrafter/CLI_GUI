@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <chrono>
 #include <fstream>
+#include <CLI_GUI/detail/FileDialog.hpp>
 
 namespace CLI_GUI {
 namespace detail {
@@ -103,9 +104,6 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::InputText:
         case WidgetType::Password:
-        case WidgetType::FileOpen:
-        case WidgetType::FileSave:
-        case WidgetType::DirPicker:
         case WidgetType::CodeEditor:
         case WidgetType::IpAddress: {
             if (!mut_meta.initialized) {
@@ -116,6 +114,33 @@ inline void render_option(App& app, CLI::Option* opt) {
                 mut_meta.initialized = true;
             }
             ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
+            break;
+        }
+        case WidgetType::FileOpen:
+        case WidgetType::FileSave:
+        case WidgetType::DirPicker: {
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
+                    mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                }
+                mut_meta.initialized = true;
+            }
+            // Shorter text field to make room for [Browse...] button
+            float avail = ImGui::GetContentRegionAvail().x;
+            ImGui::PushItemWidth(avail - 75);
+            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Browse...")) {
+                const char* title = label.c_str();
+                if (wt == WidgetType::DirPicker)
+                    dir_picker_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+                else if (wt == WidgetType::FileSave)
+                    save_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+                else
+                    open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+            }
             break;
         }
         case WidgetType::InputInt:
