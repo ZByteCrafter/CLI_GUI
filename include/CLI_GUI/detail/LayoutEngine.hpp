@@ -461,6 +461,17 @@ inline void render_subcommands(App& app, ConsoleState& console) {
                 for (auto* opt : sub->get_options()) {
                     render_option(app, opt);
                 }
+                // Also render option groups nested under this subcommand
+                for (auto* os : sub->get_subcommands([](CLI::App*) { return true; })) {
+                    if (!os->get_name().empty()) continue;
+                    ImGui::Spacing();
+                    if (ImGui::CollapsingHeader(os->get_group().c_str(),
+                                                ImGuiTreeNodeFlags_DefaultOpen)) {
+                        for (auto* opt : os->get_options()) {
+                            render_option(app, opt);
+                        }
+                    }
+                }
                 ImGui::EndTabItem();
                 console.active_subcommand = sub->get_name();
             }
