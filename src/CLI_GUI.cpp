@@ -33,6 +33,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             auto comma = raw_name.find(',');
             std::string name = (comma != std::string::npos)
                                ? raw_name.substr(0, comma) : raw_name;
+            bool is_named = (!name.empty() && name[0] == '-');
 
             WidgetType wt = meta.widget_type;
             if (wt == WidgetType::Auto) {
@@ -43,7 +44,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             switch (wt) {
             case WidgetType::Checkbox:
             case WidgetType::Toggle:
-                if (meta.bool_state) { args.push_back(name); }
+                if (meta.bool_state && is_named) { args.push_back(name); }
                 break;
             case WidgetType::InputText:
             case WidgetType::Password:
@@ -54,7 +55,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::CodeEditor:
             case WidgetType::IpAddress:
                 if (meta.initialized) {
-                    args.push_back(name);
+                    if (is_named) args.push_back(name);
                     args.push_back(meta.text_buf);
                 }
                 break;
@@ -62,13 +63,13 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::SpinInt:
             case WidgetType::SliderInt:
             case WidgetType::Duration:
-                args.push_back(name);
+                if (is_named) args.push_back(name);
                 args.push_back(std::to_string(meta.int_state));
                 break;
             case WidgetType::InputFloat:
             case WidgetType::SpinFloat:
             case WidgetType::SliderFloat:
-                args.push_back(name);
+                if (is_named) args.push_back(name);
                 args.push_back(std::to_string(meta.float_state));
                 break;
             case WidgetType::Combo:
@@ -76,12 +77,12 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::ToggleGroup:
                 if (!meta.values.empty() && meta.combo_current >= 0 &&
                     static_cast<size_t>(meta.combo_current) < meta.values.size()) {
-                    args.push_back(name);
+                    if (is_named) args.push_back(name);
                     args.push_back(meta.values[meta.combo_current]);
                 }
                 break;
             case WidgetType::ColorRGB: {
-                args.push_back(name);
+                if (is_named) args.push_back(name);
                 char buf[64];
                 snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
                          meta.color3[0], meta.color3[1], meta.color3[2]);
@@ -89,7 +90,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 break;
             }
             case WidgetType::ColorRGBA: {
-                args.push_back(name);
+                if (is_named) args.push_back(name);
                 char buf[80];
                 snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
                          meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
@@ -101,7 +102,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 if (meta.initialized) {
                     for (auto& item : meta.list_items) {
                         if (!item.empty()) {
-                            args.push_back(name);
+                            if (is_named) args.push_back(name);
                             args.push_back(item);
                         }
                     }
@@ -110,7 +111,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::MultiSelect:
                 if (meta.initialized) {
                     for (auto& item : meta.list_items) {
-                        args.push_back(name);
+                        if (is_named) args.push_back(name);
                         args.push_back(item);
                     }
                 }
