@@ -14,6 +14,8 @@
 #include <vector>
 #include <set>
 #include <cstdio>
+#include <chrono>
+#include <fstream>
 
 namespace CLI_GUI {
 namespace detail {
@@ -313,9 +315,26 @@ inline void render_console(ConsoleState& console) {
             ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 230);
         ImGui::Checkbox("Auto-scroll", &console.auto_scroll);
         ImGui::SameLine();
-        ImGui::BeginDisabled();
-        ImGui::SmallButton("Save"); ImGui::SameLine();
-        ImGui::EndDisabled();
+        if (ImGui::SmallButton("Save")) {
+            auto now = std::chrono::system_clock::now();
+            auto t = std::chrono::system_clock::to_time_t(now);
+            std::tm tm_buf;
+#ifdef _WIN32
+            localtime_s(&tm_buf, &t);
+#else
+            localtime_r(&t, &tm_buf);
+#endif
+            char name[64];
+            std::strftime(name, sizeof(name), "log_%Y%m%d_%H%M%S.txt", &tm_buf);
+            std::ofstream ofs(name);
+            if (ofs) {
+                for (auto& line : snapshot) { ofs << line << "\n"; }
+                console.push_line("[DONE] Log saved to " + std::string(name));
+            } else {
+                console.push_line("[ERROR] Failed to save log file");
+            }
+        }
+        ImGui::SameLine();
         if (ImGui::SmallButton("Copy")) {
             std::string all;
             for (auto& line : snapshot) {
