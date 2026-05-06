@@ -181,7 +181,7 @@ void launch_gui(App& app, int argc, char** argv) {
             bool has_real_subs = false;
             auto subs = app.get_subcommands([](CLI::App*) { return true; });
             for (auto* s : subs) {
-                if (s->get_group().empty()) { has_real_subs = true; break; }
+                if (!s->get_name().empty()) { has_real_subs = true; break; }
             }
             if (has_real_subs) {
                 detail::render_subcommands(app, console);

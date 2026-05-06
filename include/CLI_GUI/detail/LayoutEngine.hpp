@@ -453,8 +453,8 @@ inline void render_subcommands(App& app, ConsoleState& console) {
         }
 
         for (auto* sub : subs) {
-            // Skip option groups — rendered as collapsible headers, not tabs
-            if (!sub->get_group().empty())
+            // Skip option groups (empty name, rendered as collapsible headers)
+            if (sub->get_name().empty())
                 continue;
             bool tab_open = ImGui::BeginTabItem(sub->get_name().c_str());
             if (tab_open) {
