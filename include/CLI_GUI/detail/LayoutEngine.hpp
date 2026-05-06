@@ -17,6 +17,7 @@
 #include <chrono>
 #include <fstream>
 #include <CLI_GUI/detail/FileDialog.hpp>
+#include <CLI_GUI/detail/BackendGLFW.hpp>
 
 namespace CLI_GUI {
 namespace detail {
@@ -141,16 +142,14 @@ inline void render_option(App& app, CLI::Option* opt) {
                 item_width -= 80;  // extra space for "Folder" checkbox
             ImGui::SetNextItemWidth(item_width);
             ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
-            // Drag-drop support: accept file paths dropped onto the text field
-            if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload =
-                    ImGui::AcceptDragDropPayload("FILE_PATH")) {
-                    std::strncpy(mut_meta.text_buf,
-                                 static_cast<const char*>(payload->Data),
+            // GLFW file drop: check for paths dropped onto the window
+            {
+                auto dropped = BackendGLFW::take_dropped_paths();
+                if (!dropped.empty()) {
+                    std::strncpy(mut_meta.text_buf, dropped[0].c_str(),
                                  sizeof(mut_meta.text_buf) - 1);
                     mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
                 }
-                ImGui::EndDragDropTarget();
             }
             ImGui::SameLine();
             if (ImGui::Button("Browse", ImVec2(btn_w, 0))) {

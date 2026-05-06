@@ -7,6 +7,8 @@
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <vector>
+#include <mutex>
 #include <stdexcept>
 #include <cstdio>
 
@@ -25,8 +27,25 @@ public:
 
     GLFWwindow* window() { return window_; }
 
+    /// Poll and consume file paths dropped onto the window since last call.
+    static std::vector<std::string> take_dropped_paths() {
+        std::lock_guard<std::mutex> lock(s_drop_mutex_);
+        auto paths = s_dropped_paths_;
+        s_dropped_paths_.clear();
+        return paths;
+    }
+
 private:
     GLFWwindow* window_ = nullptr;
+
+    static inline std::mutex s_drop_mutex_;
+    static inline std::vector<std::string> s_dropped_paths_;
+
+    static void drop_callback(GLFWwindow*, int count, const char** paths) {
+        std::lock_guard<std::mutex> lock(s_drop_mutex_);
+        for (int i = 0; i < count; ++i)
+            s_dropped_paths_.emplace_back(paths[i]);
+    }
 };
 
 BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
@@ -45,6 +64,9 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
         glfwTerminate();
         throw std::runtime_error("CLI_GUI: Failed to create GLFW window");
     }
+
+    // Register file drop callback for drag-drop support
+    glfwSetDropCallback(window_, drop_callback);
 
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);
