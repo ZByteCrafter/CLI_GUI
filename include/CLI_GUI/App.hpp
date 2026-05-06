@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <cassert>
 
 namespace CLI_GUI {
 
@@ -39,12 +40,16 @@ public:
     using CLI::App::App;
 
     /// Get GUI metadata for an option pointer (non-const access).
-    OptionGuiMeta& gui_meta(CLI::Option* opt) { return option_meta_[opt]; }
+    OptionGuiMeta& gui_meta(CLI::Option* opt) {
+        assert(opt && "gui_meta: null option pointer");
+        return option_meta_[opt];
+    }
 
     /// Get GUI metadata for an option pointer (const access).
     /// Uses the non-const pointer directly since the map key is CLI::Option*.
     /// Safe: find() does not modify the key.
     const OptionGuiMeta& gui_meta(const CLI::Option* opt) const {
+        assert(opt && "gui_meta: null option pointer");
         // Key type is CLI::Option*, so we must cast. This is safe because
         // unordered_map::find only compares keys, never modifies them.
         auto it = option_meta_.find(const_cast<CLI::Option*>(opt));

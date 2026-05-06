@@ -15,9 +15,10 @@ inline void cli_gui_init_console() {
 #if defined(_WIN32)
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
         // Re-open stdout/stderr to the attached console
-        FILE* dummy;
-        freopen_s(&dummy, "CONOUT$", "w", stdout);
-        freopen_s(&dummy, "CONOUT$", "w", stderr);
+        FILE* fp_out = nullptr;
+        FILE* fp_err = nullptr;
+        freopen_s(&fp_out, "CONOUT$", "w", stdout);
+        freopen_s(&fp_err, "CONOUT$", "w", stderr);
     }
 #endif
 }

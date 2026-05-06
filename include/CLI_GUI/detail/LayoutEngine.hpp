@@ -34,6 +34,7 @@ struct ConsoleState {
     bool quit_requested = false;
     std::string active_subcommand;  // name of the selected subcommand tab
     bool auto_scroll = true;        // auto-scroll to bottom on new output
+    CLI::Option* drop_target = nullptr;  // per-frame file drop target widget
 
     /// Append a line. If over limit, drop oldest.
     void push_line(const std::string& line) {
@@ -72,9 +73,37 @@ inline ImVec4 detect_log_level(const std::string& line) {
     return ImVec4(0.90f, 0.90f, 0.90f, 1.0f);        // light gray (default)
 }
 
-inline void render_option(App& app, CLI::Option* opt) {
-    const auto& meta = app.gui_meta(opt);
-    auto& mut_meta = app.gui_meta(opt);
+/// Parse "#RRGGBB" or "#RRGGBBAA" hex color string into float[3] or float[4].
+/// Returns true on success.
+static bool parse_hex_color(const std::string& s, float* out, int components) {
+    if (s.empty() || s[0] != '#' || (s.size() != 7 && s.size() != 9)) return false;
+    auto hex = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    unsigned int rgba = 0;
+    for (size_t i = 1; i < s.size(); ++i) {
+        int h = hex(s[i]);
+        if (h < 0) return false;
+        rgba = (rgba << 4) | h;
+    }
+    if (s.size() == 7) {
+        out[0] = ((rgba >> 16) & 0xFF) / 255.0f;
+        out[1] = ((rgba >> 8)  & 0xFF) / 255.0f;
+        out[2] = (rgba & 0xFF) / 255.0f;
+    } else {
+        out[0] = ((rgba >> 24) & 0xFF) / 255.0f;
+        out[1] = ((rgba >> 16) & 0xFF) / 255.0f;
+        out[2] = ((rgba >> 8)  & 0xFF) / 255.0f;
+        if (components >= 4) out[3] = (rgba & 0xFF) / 255.0f;
+    }
+    return true;
+}
+
+inline void render_option(App& app, CLI::Option* opt, ConsoleState& console) {
+    auto& meta = app.gui_meta(opt);
 
     // Skip CLI11's default help flag in GUI — no terminal to display it
     std::string raw_name = opt->get_name();
@@ -99,37 +128,37 @@ inline void render_option(App& app, CLI::Option* opt) {
     switch (wt) {
         case WidgetType::Checkbox:
         case WidgetType::Toggle: {
-            if (!mut_meta.initialized) {
-                mut_meta.bool_state = !opt->results().empty();
-                mut_meta.initialized = true;
+            if (!meta.initialized) {
+                meta.bool_state = !opt->results().empty();
+                meta.initialized = true;
             }
-            ImGui::Checkbox(label.c_str(), &mut_meta.bool_state);
+            ImGui::Checkbox(label.c_str(), &meta.bool_state);
             break;
         }
         case WidgetType::InputText:
         case WidgetType::Password:
         case WidgetType::CodeEditor:
         case WidgetType::IpAddress: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
-                    mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                    std::strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf) - 1);
+                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
-            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
+            ImGui::InputText(label.c_str(), meta.text_buf, sizeof(meta.text_buf));
             break;
         }
         case WidgetType::FileOpen:
         case WidgetType::FileSave:
         case WidgetType::DirPicker:
         case WidgetType::FileOrDir: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
-                    mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                    std::strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf) - 1);
+                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             // Label on its own line, then input + Browse button
             ImGui::TextUnformatted(label.c_str());
@@ -141,19 +170,18 @@ inline void render_option(App& app, CLI::Option* opt) {
             if (wt == WidgetType::FileOrDir)
                 item_width -= 80;  // extra space for "Folder" checkbox
             ImGui::SetNextItemWidth(item_width);
-            ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
+            ImGui::InputText("##file_input", meta.text_buf, sizeof(meta.text_buf));
 
             // Track which file widget the mouse hovers over for targeted drops
-            static CLI::Option* s_drop_target = nullptr;
-            if (ImGui::IsItemHovered()) s_drop_target = opt;
+            if (ImGui::IsItemHovered()) console.drop_target = opt;
 
             // GLFW file drop: only consume paths in the hovered widget
-            if (s_drop_target == opt) {
+            if (console.drop_target == opt) {
                 auto dropped = BackendGLFW::take_dropped_paths();
                 if (!dropped.empty()) {
-                    std::strncpy(mut_meta.text_buf, dropped[0].c_str(),
-                                 sizeof(mut_meta.text_buf) - 1);
-                    mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
+                    std::strncpy(meta.text_buf, dropped[0].c_str(),
+                                 sizeof(meta.text_buf) - 1);
+                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
                 }
             }
             ImGui::SameLine();
@@ -161,82 +189,82 @@ inline void render_option(App& app, CLI::Option* opt) {
                 const char* dlg_title = label.c_str();
                 bool use_folder = (wt == WidgetType::DirPicker);
                 if (wt == WidgetType::FileOrDir)
-                    use_folder = mut_meta.folder_mode;
+                    use_folder = meta.folder_mode;
                 if (use_folder)
-                    dir_picker_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
+                    dir_picker_dialog(meta.text_buf, sizeof(meta.text_buf), dlg_title);
                 else if (wt == WidgetType::FileSave)
-                    save_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
+                    save_file_dialog(meta.text_buf, sizeof(meta.text_buf), dlg_title);
                 else
-                    open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
+                    open_file_dialog(meta.text_buf, sizeof(meta.text_buf), dlg_title);
             }
             if (wt == WidgetType::FileOrDir) {
                 ImGui::SameLine();
-                ImGui::Checkbox("Folder", &mut_meta.folder_mode);
+                ImGui::Checkbox("Folder", &meta.folder_mode);
             }
             ImGui::PopID();
             break;
         }
         case WidgetType::InputInt:
         case WidgetType::SpinInt: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
-                    catch (...) { mut_meta.int_state = 0; }
+                    try { meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { meta.int_state = 0; }
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
-            ImGui::InputInt(label.c_str(), &mut_meta.int_state);
+            ImGui::InputInt(label.c_str(), &meta.int_state);
             break;
         }
         case WidgetType::InputFloat:
         case WidgetType::SpinFloat: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    try { mut_meta.float_state = std::stof(opt->results()[0]); }
-                    catch (...) { mut_meta.float_state = 0.0f; }
+                    try { meta.float_state = std::stof(opt->results()[0]); }
+                    catch (...) { meta.float_state = 0.0f; }
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
-            ImGui::InputFloat(label.c_str(), &mut_meta.float_state);
+            ImGui::InputFloat(label.c_str(), &meta.float_state);
             break;
         }
         case WidgetType::SliderInt: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
-                    catch (...) { mut_meta.int_state = 0; }
+                    try { meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { meta.int_state = 0; }
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             int mn = meta.has_min ? static_cast<int>(meta.min_val) : 0;
             int mx = meta.has_max ? static_cast<int>(meta.max_val) : 100;
-            ImGui::SliderInt(label.c_str(), &mut_meta.int_state, mn, mx);
+            ImGui::SliderInt(label.c_str(), &meta.int_state, mn, mx);
             break;
         }
         case WidgetType::SliderFloat: {
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    try { mut_meta.float_state = std::stof(opt->results()[0]); }
-                    catch (...) { mut_meta.float_state = 0.0f; }
+                    try { meta.float_state = std::stof(opt->results()[0]); }
+                    catch (...) { meta.float_state = 0.0f; }
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             float mn = meta.has_min ? static_cast<float>(meta.min_val) : 0.0f;
             float mx = meta.has_max ? static_cast<float>(meta.max_val) : 1.0f;
-            ImGui::SliderFloat(label.c_str(), &mut_meta.float_state, mn, mx);
+            ImGui::SliderFloat(label.c_str(), &meta.float_state, mn, mx);
             break;
         }
         case WidgetType::Combo:
         case WidgetType::Radio:
         case WidgetType::ToggleGroup: {
-            if (!mut_meta.initialized) {
-                mut_meta.initialized = true;
+            if (!meta.initialized) {
+                meta.initialized = true;
                 // Initialize combo_current from CLI results, if available
                 if (!opt->results().empty()) {
                     auto& current_val = opt->results()[0];
                     for (size_t i = 0; i < meta.values.size(); ++i) {
                         if (meta.values[i] == current_val) {
-                            mut_meta.combo_current = static_cast<int>(i);
+                            meta.combo_current = static_cast<int>(i);
                             break;
                         }
                     }
@@ -246,153 +274,155 @@ inline void render_option(App& app, CLI::Option* opt) {
                 std::vector<const char*> items;
                 items.reserve(meta.values.size());
                 for (auto& v : meta.values) items.push_back(v.c_str());
-                ImGui::Combo(label.c_str(), &mut_meta.combo_current,
+                ImGui::Combo(label.c_str(), &meta.combo_current,
                              items.data(), static_cast<int>(items.size()));
             }
             break;
         }
         case WidgetType::ColorRGB: {
-            if (!mut_meta.initialized) {
-                mut_meta.initialized = true;
+            if (!meta.initialized) {
+                meta.initialized = true;
                 if (!opt->results().empty()) {
-                    // Try to parse "r g b" or "#RRGGBB" from results
-                    sscanf(opt->results()[0].c_str(), "%f %f %f",
-                           &mut_meta.color3[0], &mut_meta.color3[1], &mut_meta.color3[2]);
+                    if (sscanf(opt->results()[0].c_str(), "%f %f %f",
+                               &meta.color3[0], &meta.color3[1], &meta.color3[2]) != 3) {
+                        parse_hex_color(opt->results()[0], meta.color3, 3);
+                    }
                 }
             }
-            ImGui::ColorEdit3(label.c_str(), mut_meta.color3);
+            ImGui::ColorEdit3(label.c_str(), meta.color3);
             break;
         }
         case WidgetType::ColorRGBA: {
-            if (!mut_meta.initialized) {
-                mut_meta.initialized = true;
+            if (!meta.initialized) {
+                meta.initialized = true;
                 if (!opt->results().empty()) {
-                    sscanf(opt->results()[0].c_str(), "%f %f %f %f",
-                           &mut_meta.color4[0], &mut_meta.color4[1],
-                           &mut_meta.color4[2], &mut_meta.color4[3]);
+                    if (sscanf(opt->results()[0].c_str(), "%f %f %f %f",
+                               &meta.color4[0], &meta.color4[1],
+                               &meta.color4[2], &meta.color4[3]) != 4) {
+                        parse_hex_color(opt->results()[0], meta.color4, 4);
+                    }
                 }
             }
-            ImGui::ColorEdit4(label.c_str(), mut_meta.color4);
+            ImGui::ColorEdit4(label.c_str(), meta.color4);
             break;
         }
         case WidgetType::Duration: {
             static const char* units[] = {"sec", "min", "hr", "day"};
-            if (!mut_meta.initialized) {
+            if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
-                    catch (...) { mut_meta.int_state = 0; }
+                    try { meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { meta.int_state = 0; }
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             ImGui::TextUnformatted(label.c_str());
             ImGui::SameLine();
             ImGui::PushID(opt);
             ImGui::PushItemWidth(80);
-            ImGui::InputInt("##dur_val", &mut_meta.int_state);
+            ImGui::InputInt("##dur_val", &meta.int_state);
             ImGui::PopItemWidth();
             ImGui::SameLine();
             ImGui::PushItemWidth(55);
-            ImGui::Combo("##dur_unit", &mut_meta.combo_current, units, 4);
+            ImGui::Combo("##dur_unit", &meta.combo_current, units, 4);
             ImGui::PopItemWidth();
             ImGui::PopID();
             break;
         }
         case WidgetType::List: {
-            if (!mut_meta.initialized) {
-                mut_meta.list_items.clear();
+            if (!meta.initialized) {
+                meta.list_items.clear();
                 for (auto& r : opt->results()) {
-                    mut_meta.list_items.push_back(r);
+                    meta.list_items.push_back(r);
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             ImGui::TextUnformatted(label.c_str());
             ImGui::PushID(opt);
-            for (int i = 0; i < (int)mut_meta.list_items.size(); ++i) {
+            for (int i = 0; i < (int)meta.list_items.size(); ++i) {
                 ImGui::PushID(i);
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30);
-                char buf[256] = {};
-                std::strncpy(buf, mut_meta.list_items[i].c_str(), 255);
+                char buf[1024] = {};
+                std::strncpy(buf, meta.list_items[i].c_str(), sizeof(buf) - 1);
                 ImGui::InputText("##li", buf, sizeof(buf));
-                mut_meta.list_items[i] = buf;
+                meta.list_items[i] = buf;
                 ImGui::SameLine();
                 if (ImGui::SmallButton("-")) {
-                    mut_meta.list_items.erase(mut_meta.list_items.begin() + i);
+                    meta.list_items.erase(meta.list_items.begin() + i);
                     ImGui::PopID();
                     break;
                 }
                 ImGui::PopID();
             }
             if (ImGui::SmallButton("+")) {
-                mut_meta.list_items.emplace_back();
+                meta.list_items.emplace_back();
             }
             ImGui::PopID();
             break;
         }
         case WidgetType::TagList: {
-            if (!mut_meta.initialized) {
-                mut_meta.list_items.clear();
+            if (!meta.initialized) {
+                meta.list_items.clear();
                 for (auto& r : opt->results()) {
-                    mut_meta.list_items.push_back(r);
+                    meta.list_items.push_back(r);
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             ImGui::TextUnformatted(label.c_str());
             ImGui::PushID(opt);
-            for (int i = 0; i < (int)mut_meta.list_items.size(); ++i) {
+            for (int i = 0; i < (int)meta.list_items.size(); ++i) {
                 ImGui::PushID(i);
-                ImGui::TextUnformatted(mut_meta.list_items[i].c_str());
+                ImGui::TextUnformatted(meta.list_items[i].c_str());
                 ImGui::SameLine();
                 if (ImGui::SmallButton("x")) {
-                    mut_meta.list_items.erase(mut_meta.list_items.begin() + i);
+                    meta.list_items.erase(meta.list_items.begin() + i);
                     ImGui::PopID();
                     break;
                 }
                 ImGui::PopID();
             }
-            static char tag_buf[128] = {};
             ImGui::SetNextItemWidth(120);
-            if (ImGui::InputText("##tag_input", tag_buf, sizeof(tag_buf),
+            if (ImGui::InputText("##tag_input", meta.text_buf, sizeof(meta.text_buf),
                                  ImGuiInputTextFlags_EnterReturnsTrue)) {
-                if (tag_buf[0]) {
-                    mut_meta.list_items.emplace_back(tag_buf);
-                    tag_buf[0] = 0;
+                if (meta.text_buf[0]) {
+                    meta.list_items.emplace_back(meta.text_buf);
+                    meta.text_buf[0] = 0;
                 }
             }
             ImGui::SameLine();
             if (ImGui::SmallButton("Add")) {
-                if (tag_buf[0]) {
-                    mut_meta.list_items.emplace_back(tag_buf);
-                    tag_buf[0] = 0;
+                if (meta.text_buf[0]) {
+                    meta.list_items.emplace_back(meta.text_buf);
+                    meta.text_buf[0] = 0;
                 }
             }
             ImGui::PopID();
             break;
         }
         case WidgetType::MultiSelect: {
-            if (!mut_meta.initialized) {
-                mut_meta.list_items.clear();
+            if (!meta.initialized) {
+                meta.list_items.clear();
                 for (auto& r : opt->results()) {
-                    mut_meta.list_items.push_back(r);
+                    meta.list_items.push_back(r);
                 }
-                mut_meta.initialized = true;
+                meta.initialized = true;
             }
             ImGui::TextUnformatted(label.c_str());
             ImGui::PushID(opt);
             for (int i = 0; i < (int)meta.values.size(); ++i) {
                 bool selected = false;
-                for (auto& sel : mut_meta.list_items) {
+                for (auto& sel : meta.list_items) {
                     if (sel == meta.values[i]) { selected = true; break; }
                 }
                 ImGui::PushID(i);
                 if (ImGui::Checkbox(meta.values[i].c_str(), &selected)) {
                     if (selected) {
-                        mut_meta.list_items.push_back(meta.values[i]);
+                        meta.list_items.push_back(meta.values[i]);
                     } else {
-                        mut_meta.list_items.erase(
-                            std::remove(mut_meta.list_items.begin(),
-                                        mut_meta.list_items.end(),
+                        meta.list_items.erase(
+                            std::remove(meta.list_items.begin(),
+                                        meta.list_items.end(),
                                         meta.values[i]),
-                            mut_meta.list_items.end());
+                            meta.list_items.end());
                     }
                 }
                 ImGui::PopID();
@@ -408,7 +438,7 @@ inline void render_option(App& app, CLI::Option* opt) {
 
 /// Render all options from an App, grouped by CLI::OptionGroup into collapsible sections.
 /// Options without a group render outside any collapsible header.
-inline void render_options(App& app) {
+inline void render_options(App& app, ConsoleState& console) {
     auto groups = app.get_groups();
     std::set<std::string> rendered_groups;
 
@@ -416,19 +446,14 @@ inline void render_options(App& app) {
     for (auto& gname : groups) {
         if (gname.empty()) continue;
         bool open = ImGui::CollapsingHeader(gname.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-        // Collect options in this group (from both root and subcommand options)
-        // Actually we need to iterate over app's options twice:
-        // first for non-grouped, then for each group. More efficient: one pass.
-        // For simplicity, we just iterate over groups and render matching options.
         if (open) {
             for (auto* opt : app.get_options()) {
                 if (opt->get_group() == gname) {
-                    render_option(app, opt);
+                    render_option(app, opt, console);
                     rendered_groups.insert(gname);
                 }
             }
         } else {
-            // Still mark as rendered so they don't appear in the ungrouped fallthrough
             rendered_groups.insert(gname);
         }
     }
@@ -436,7 +461,7 @@ inline void render_options(App& app) {
     // Render options with no group (or whose group wasn't in get_groups())
     for (auto* opt : app.get_options()) {
         if (opt->get_group().empty() || rendered_groups.count(opt->get_group()) == 0) {
-            render_option(app, opt);
+            render_option(app, opt, console);
         }
     }
 }
@@ -452,7 +477,7 @@ inline void render_subcommands(App& app, ConsoleState& console) {
         bool root_open = ImGui::BeginTabItem(
             app.get_name().empty() ? "Main" : app.get_name().c_str());
         if (root_open) {
-            render_options(app);
+            render_options(app, console);
             ImGui::EndTabItem();
         }
         if (root_open) {
@@ -466,7 +491,7 @@ inline void render_subcommands(App& app, ConsoleState& console) {
             bool tab_open = ImGui::BeginTabItem(sub->get_name().c_str());
             if (tab_open) {
                 for (auto* opt : sub->get_options()) {
-                    render_option(app, opt);
+                    render_option(app, opt, console);
                 }
                 // Also render option groups nested under this subcommand
                 for (auto* os : sub->get_subcommands([](CLI::App*) { return true; })) {
@@ -475,7 +500,7 @@ inline void render_subcommands(App& app, ConsoleState& console) {
                     if (ImGui::CollapsingHeader(os->get_group().c_str(),
                                                 ImGuiTreeNodeFlags_DefaultOpen)) {
                         for (auto* opt : os->get_options()) {
-                            render_option(app, opt);
+                            render_option(app, opt, console);
                         }
                     }
                 }
@@ -555,14 +580,38 @@ inline void render_bottom_bar(App& app, ConsoleState& console) {
         }
     } else {
         // Check if all required options are filled
+        auto is_required_filled = [](const OptionGuiMeta& meta, CLI::Option* opt) {
+            if (!meta.initialized) return false;
+            WidgetType wt = meta.widget_type;
+            if (wt == WidgetType::Auto) {
+                wt = (opt->get_expected_min() == 0)
+                     ? WidgetType::Checkbox : WidgetType::InputText;
+            }
+            switch (wt) {
+                case WidgetType::InputText:
+                case WidgetType::Password:
+                case WidgetType::CodeEditor:
+                case WidgetType::IpAddress:
+                case WidgetType::FileOpen:
+                case WidgetType::FileSave:
+                case WidgetType::DirPicker:
+                case WidgetType::FileOrDir:
+                    return meta.text_buf[0] != '\0';
+                case WidgetType::List:
+                case WidgetType::TagList:
+                case WidgetType::MultiSelect:
+                    return !meta.list_items.empty();
+                default:
+                    // Checkbox, int, float, combo, color, duration —
+                    // initialized is sufficient (0/false is a valid value)
+                    return true;
+            }
+        };
         bool can_run = true;
-        auto check_required = [&can_run](App& a, CLI::App* cli_app) {
+        auto check_required = [&](App& a, CLI::App* cli_app) {
             for (auto* opt : cli_app->get_options()) {
                 if (!opt->get_required()) continue;
-                const auto& meta = a.gui_meta(opt);
-                if (!meta.initialized ||
-                    (meta.text_buf[0] == 0 && !meta.bool_state &&
-                     meta.list_items.empty())) {
+                if (!is_required_filled(a.gui_meta(opt), opt)) {
                     can_run = false;
                     return;
                 }
@@ -572,10 +621,7 @@ inline void render_bottom_bar(App& app, ConsoleState& console) {
                      [](CLI::App* s) { return s->get_name().empty(); })) {
                 for (auto* opt : os->get_options()) {
                     if (!opt->get_required()) continue;
-                    const auto& meta = a.gui_meta(opt);
-                    if (!meta.initialized ||
-                        (meta.text_buf[0] == 0 && !meta.bool_state &&
-                         meta.list_items.empty())) {
+                    if (!is_required_filled(a.gui_meta(opt), opt)) {
                         can_run = false;
                         return;
                     }

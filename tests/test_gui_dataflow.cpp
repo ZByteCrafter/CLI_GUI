@@ -49,12 +49,13 @@ TEST_CASE("OptionGuiMeta init: bool_state from flag", "[gui_dataflow]") {
 
 TEST_CASE("OptionGuiMeta init: bool_state when flag absent", "[gui_dataflow]") {
     CLI_GUI::App app{"Test"};
+    app.allow_extras();  // accept dummy arg below
     bool flag = false;
     auto* opt = app.add_flag("-v,--verbose", flag, "verbose");
 
-    // Simulate CLI parse without flag
-    const char* argv[] = {"test"};
-    CLI_GUI_PARSE(app, 1, const_cast<char**>(argv));
+    // Simulate CLI parse without flag (use argc>1 to avoid GUI launch)
+    const char* argv[] = {"test", "--"};
+    CLI_GUI_PARSE(app, 2, const_cast<char**>(argv));
 
     auto& meta = app.gui_meta(opt);
     if (!meta.initialized) {

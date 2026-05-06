@@ -3,6 +3,7 @@
 #ifdef CLI_GUI_HAS_GUI
 
 #include <cstddef>
+#include <cstdio>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -31,6 +32,7 @@ inline bool open_file_dialog(char* buf, size_t size, const char* title) {
     return GetOpenFileNameA(&ofn) != FALSE;
 #else
     (void)buf; (void)size; (void)title;
+    std::fprintf(stderr, "[WARN] File open dialog not available on this platform.\n");
     return false;
 #endif
 }
@@ -50,6 +52,7 @@ inline bool save_file_dialog(char* buf, size_t size, const char* title) {
     return GetSaveFileNameA(&ofn) != FALSE;
 #else
     (void)buf; (void)size; (void)title;
+    std::fprintf(stderr, "[WARN] File save dialog not available on this platform.\n");
     return false;
 #endif
 }
@@ -70,6 +73,7 @@ inline bool dir_picker_dialog(char* buf, size_t size, const char* title) {
     return false;
 #else
     (void)buf; (void)size; (void)title;
+    std::fprintf(stderr, "[WARN] Directory picker dialog not available on this platform.\n");
     return false;
 #endif
 }

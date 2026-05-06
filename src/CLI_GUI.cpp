@@ -19,14 +19,14 @@ namespace CLI_GUI {
 /// Builds a fake argv and calls app.parse() to trigger validation and callbacks.
 /// @param active_subcommand  if non-empty, only collect options from this subcommand,
 ///                           inserting its name as a positional arg before its options.
-static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
+void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
     std::vector<std::string> args;
     args.push_back("gui"); // argv[0] placeholder
 
     // Helper: collect options from a CLI::App*, looking up metadata from root
     auto collect_from = [&args](App& root, CLI::App* a) {
         for (auto* opt : a->get_options()) {
-            const auto& meta = root.gui_meta(opt);
+            auto& meta = root.gui_meta(opt);
             // Extract the first name (e.g. "--count" from "--count,-c")
             std::string raw_name = opt->get_name();
             if (raw_name.empty()) continue;
@@ -53,8 +53,28 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
 
             WidgetType wt = meta.widget_type;
             if (wt == WidgetType::Auto) {
-                wt = (opt->get_expected_min() == 0)
-                     ? WidgetType::Checkbox : WidgetType::InputText;
+                if (opt->get_expected_min() == 0)
+                    wt = WidgetType::Checkbox;
+                else if (!meta.values.empty())
+                    wt = WidgetType::Combo;
+                else
+                    wt = WidgetType::InputText;
+            }
+
+            // Sync meta fields: for inferred-InputText numeric options,
+            // populate text_buf from int_state/float_state so the flush
+            // picks up values set by sliders/spinners.
+            if (meta.initialized && wt == WidgetType::InputText) {
+                auto opt_t = opt->get_type_name();
+                if (opt_t == "INT" || opt_t == "int" || opt_t == "LONG") {
+                    auto s = std::to_string(meta.int_state);
+                    std::strncpy(meta.text_buf, s.c_str(),
+                                 sizeof(meta.text_buf) - 1);
+                } else if (opt_t == "FLOAT" || opt_t == "double") {
+                    auto s = std::to_string(meta.float_state);
+                    std::strncpy(meta.text_buf, s.c_str(),
+                                 sizeof(meta.text_buf) - 1);
+                }
             }
 
             switch (wt) {
@@ -79,38 +99,47 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::SpinInt:
             case WidgetType::SliderInt:
             case WidgetType::Duration:
-                if (is_named) args.push_back(name);
-                push_value(std::to_string(meta.int_state));
+                if (meta.initialized) {
+                    if (is_named) args.push_back(name);
+                    push_value(std::to_string(meta.int_state));
+                }
                 break;
             case WidgetType::InputFloat:
             case WidgetType::SpinFloat:
             case WidgetType::SliderFloat:
-                if (is_named) args.push_back(name);
-                push_value(std::to_string(meta.float_state));
+                if (meta.initialized) {
+                    if (is_named) args.push_back(name);
+                    push_value(std::to_string(meta.float_state));
+                }
                 break;
             case WidgetType::Combo:
             case WidgetType::Radio:
             case WidgetType::ToggleGroup:
-                if (!meta.values.empty() && meta.combo_current >= 0 &&
+                if (meta.initialized && !meta.values.empty() &&
+                    meta.combo_current >= 0 &&
                     static_cast<size_t>(meta.combo_current) < meta.values.size()) {
                     if (is_named) args.push_back(name);
                     push_value(meta.values[meta.combo_current]);
                 }
                 break;
             case WidgetType::ColorRGB: {
-                if (is_named) args.push_back(name);
-                char buf[64];
-                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
-                         meta.color3[0], meta.color3[1], meta.color3[2]);
-                push_value(buf);
+                if (meta.initialized) {
+                    if (is_named) args.push_back(name);
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
+                             meta.color3[0], meta.color3[1], meta.color3[2]);
+                    push_value(buf);
+                }
                 break;
             }
             case WidgetType::ColorRGBA: {
-                if (is_named) args.push_back(name);
-                char buf[80];
-                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
-                         meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
-                push_value(buf);
+                if (meta.initialized) {
+                    if (is_named) args.push_back(name);
+                    char buf[80];
+                    snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
+                             meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
+                    push_value(buf);
+                }
                 break;
             }
             case WidgetType::List:
@@ -181,6 +210,7 @@ void launch_gui(App& app, int argc, char** argv) {
 
         while (!backend.should_close() && !console.quit_requested) {
             backend.new_frame();
+            console.drop_target = nullptr;  // reset drop target each frame
 
             // Main window fills entire client area
             ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -203,7 +233,7 @@ void launch_gui(App& app, int argc, char** argv) {
             if (has_real_subs) {
                 detail::render_subcommands(app, console);
             } else {
-                detail::render_options(app);
+                detail::render_options(app, console);
                 // Also render option group sections (subcommands with empty name)
                 for (auto* s : subs) {
                     if (!s->get_name().empty()) continue;
@@ -211,7 +241,7 @@ void launch_gui(App& app, int argc, char** argv) {
                     if (ImGui::CollapsingHeader(s->get_group().c_str(),
                                                 ImGuiTreeNodeFlags_DefaultOpen)) {
                         for (auto* opt : s->get_options()) {
-                            detail::render_option(app, opt);
+                            detail::render_option(app, opt, console);
                         }
                     }
                 }
@@ -242,7 +272,13 @@ void launch_gui(App& app, int argc, char** argv) {
                     console.push_line("[INFO] Running...");
                     if (worker.joinable()) worker.join();
                     worker = std::thread([cb, &app, &console]() {
-                        cb();
+                        try {
+                            cb();
+                        } catch (const std::exception& e) {
+                            console.push_line(std::string("[ERROR] ") + e.what());
+                        } catch (...) {
+                            console.push_line("[ERROR] Unknown exception in callback.");
+                        }
                         console.running = false;
                         if (!app.is_cancelled())
                             console.push_line("[DONE] Complete.");
@@ -256,7 +292,13 @@ void launch_gui(App& app, int argc, char** argv) {
                     console.push_line("[INFO] Running...");
                     if (worker.joinable()) worker.join();
                     worker = std::thread([main_fn, &app, &console]() {
-                        main_fn();
+                        try {
+                            main_fn();
+                        } catch (const std::exception& e) {
+                            console.push_line(std::string("[ERROR] ") + e.what());
+                        } catch (...) {
+                            console.push_line("[ERROR] Unknown exception in main function.");
+                        }
                         console.running = false;
                         if (!app.is_cancelled())
                             console.push_line("[DONE] Complete.");
