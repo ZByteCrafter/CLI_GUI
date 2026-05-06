@@ -147,10 +147,10 @@ inline void render_option(App& app, CLI::Option* opt) {
             static CLI::Option* s_drop_target = nullptr;
             if (ImGui::IsItemHovered()) s_drop_target = opt;
 
-            // GLFW file drop: only fill if this is the hovered widget
-            {
+            // GLFW file drop: only consume paths in the hovered widget
+            if (s_drop_target == opt) {
                 auto dropped = BackendGLFW::take_dropped_paths();
-                if (!dropped.empty() && s_drop_target == opt) {
+                if (!dropped.empty()) {
                     std::strncpy(mut_meta.text_buf, dropped[0].c_str(),
                                  sizeof(mut_meta.text_buf) - 1);
                     mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
