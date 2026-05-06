@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <stdexcept>
+#include <cstdio>
 
 namespace CLI_GUI {
 namespace detail {
@@ -74,6 +75,29 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
+
+    // Try to load a CJK font for Chinese/Japanese/Korean support
+    ImGuiIO& io = ImGui::GetIO();
+    bool cjk_loaded = false;
+    const char* cjk_font_paths[] = {
+        "C:/Windows/Fonts/msyh.ttc",                   // Microsoft YaHei (Win)
+        "C:/Windows/Fonts/simsun.ttc",                 // SimSun (Win)
+        "/System/Library/Fonts/PingFang.ttc",           // macOS
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", // Linux
+    };
+    for (auto* path : cjk_font_paths) {
+        FILE* fp = std::fopen(path, "rb");
+        if (fp) {
+            std::fclose(fp);
+            io.Fonts->AddFontFromFileTTF(path, 16.0f, nullptr,
+                io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+            cjk_loaded = true;
+            break;
+        }
+    }
+    if (!cjk_loaded) {
+        io.Fonts->AddFontDefault();  // fallback to built-in
+    }
 
     // Wrap backend init so that if either fails, ImGui context + GLFW
     // are properly cleaned up rather than leaked.

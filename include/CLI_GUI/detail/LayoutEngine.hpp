@@ -48,8 +48,16 @@ struct ConsoleState {
 
 inline void render_option(App& app, CLI::Option* opt) {
     const auto& meta = app.gui_meta(opt);
-    auto& mut_meta = app.gui_meta(opt);  // mutable ref for per-option state
-    std::string label = meta.label.empty() ? opt->get_name() : meta.label;
+    auto& mut_meta = app.gui_meta(opt);
+
+    // Skip CLI11's default help flag in GUI — no terminal to display it
+    std::string raw_name = opt->get_name();
+    if (raw_name.find("--help") != std::string::npos ||
+        raw_name.find(",-h")  != std::string::npos) {
+        return;
+    }
+
+    std::string label = meta.label.empty() ? raw_name : meta.label;
     WidgetType wt = meta.widget_type;
 
     if (wt == WidgetType::Auto) {
