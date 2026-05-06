@@ -142,10 +142,15 @@ inline void render_option(App& app, CLI::Option* opt) {
                 item_width -= 80;  // extra space for "Folder" checkbox
             ImGui::SetNextItemWidth(item_width);
             ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
-            // GLFW file drop: check for paths dropped onto the window
+
+            // Track which file widget the mouse hovers over for targeted drops
+            static CLI::Option* s_drop_target = nullptr;
+            if (ImGui::IsItemHovered()) s_drop_target = opt;
+
+            // GLFW file drop: only fill if this is the hovered widget
             {
                 auto dropped = BackendGLFW::take_dropped_paths();
-                if (!dropped.empty()) {
+                if (!dropped.empty() && s_drop_target == opt) {
                     std::strncpy(mut_meta.text_buf, dropped[0].c_str(),
                                  sizeof(mut_meta.text_buf) - 1);
                     mut_meta.text_buf[sizeof(mut_meta.text_buf) - 1] = '\0';
