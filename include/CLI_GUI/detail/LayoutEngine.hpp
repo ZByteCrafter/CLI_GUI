@@ -304,10 +304,8 @@ inline void render_console(ConsoleState& console) {
     if (!console.show_console) return;
     ImGui::Spacing();
 
-    bool header_open = ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen);
-    if (header_open) {
+    if (ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen)) {
         auto snapshot = console.snapshot();
-
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
             true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -317,14 +315,6 @@ inline void render_console(ConsoleState& console) {
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
         ImGui::EndChild();
-
-        // Clear button below the output area, right-aligned
-        if (!snapshot.empty()) {
-            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 60);
-            if (ImGui::SmallButton("Clear")) {
-                console.clear();
-            }
-        }
     }
 }
 
@@ -339,6 +329,10 @@ inline void render_bottom_bar(App& app, ConsoleState& console) {
             app.request_cancel();
         }
     } else {
+        if (ImGui::SmallButton("Clear")) {
+            console.clear();
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Run", ImVec2(120, 0))) {
             console.run_requested = true;
         }
