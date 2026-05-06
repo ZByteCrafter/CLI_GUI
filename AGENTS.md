@@ -36,7 +36,7 @@ Users always link `CLI_GUI::CLI_GUI`. When GUI is on, `CLI_GUI_Gui` is injected 
 - Only `test_app.cpp` defines `#define CATCH_CONFIG_MAIN` before including `catch2.hpp`.
 - New test files must NOT define `CATCH_CONFIG_MAIN` — all `.cpp` files compile into one executable `cli_gui_tests`.
 - The runner catches `std::exception` (not Catch2-specific types).
-- 33 tests as of current.
+- 41 tests as of current.
 
 ## GUI code gating
 
@@ -153,6 +153,26 @@ Do NOT use `PushItemWidth(GetContentRegionAvail().x - btn_w)` — the label cons
 
 Both branches of `CLI_GUI_PARSE` check `gui_callback()` before `gui_main()`. Priority: callback > main, CLI/GUI consistent. Callback in CLI mode runs synchronously without progress bar.
 
+### CLI11 `add_option_group()` creates hidden subcommands
+
+`add_option_group("Input")` internally calls `add_subcommand()`. The filter overload `get_subcommands([](App*){true})` returns them alongside real subcommands. **Filter them out by `sub->get_name().empty()`**, not by `sub->get_group()` (both types have non-empty groups — real subcommands have `group_="Subcommands"`, option groups have the user's group name).
+
+### Positional args in `flush_gui_to_cli`
+
+Options without `-` prefix are positional. In `flush_gui_to_cli`, check `name[0] == '-'` — if false, don't push the name to args, just push the value. For multi-value positional args (`expected_max > 1`), split text values by spaces so "Alice Bob" becomes two separate args.
+
+### Drag-drop uses GLFW, not ImGui
+
+OS file drops require `glfwSetDropCallback` (set in `BackendGLFW` constructor). Paths are stored in a static vector and consumed by `take_dropped_paths()`. Only the hovered file widget (tracked via `IsItemHovered()`) consumes the paths — non-target widgets skip the `take_dropped_paths()` call entirely.
+
+### Required options disable Run button
+
+`render_option` appends `*` to labels of required options (`opt->get_required()`). `render_bottom_bar` checks all required options (root + active subcommand + nested option groups) are filled before enabling Run. Unfilled state shows `Fill required * fields` in red.
+
+### `--help` / `-h` skips callback/main
+
+After `app.parse()`, check `get_help_ptr()->count()`. If help was requested, don't execute `gui_callback()` / `gui_main()`. Help is printed to stdout and the program exits normally.
+
 ## vendor/ is the sole dependency source
 
 All three dependencies live in `vendor/` and are built via `add_subdirectory`:
@@ -169,16 +189,21 @@ ImGui GLFW+OpenGL3 backend `.cpp` files are NOT their own target — they are co
 - **Build output paths**: `build/<subdir>/Debug/<name>.exe` (MSVC Debug). Adjust for other generators.
 - **Windows console suppression**: examples use `/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup`. `cli_gui_init_console()` must be called as the first line of `main()` to attach to parent console when launched from terminal.
 - **Icon**: GLFW windows need `glfwSetWindowIcon()` explicitly — the `.exe` embedded icon is NOT auto-applied to the window. BackendGLFW constructor sets a default 32x32 RGBA icon via embedded pixel data.
+- **ImGui .ini**: `imgui.ini` is auto-generated. It's in `.gitignore` — never commit it.
 
 ## Quick smoke tests
 
 ```powershell
-# Tests (33)
+# Tests (41)
 build/tests/Debug/cli_gui_tests.exe
 
 # CLI mode
 build_examples/examples/Debug/01_basic.exe -n "CLI" -c 3 -u
 # Expected: prints HELLO, CLI! three times
+
+# Positional args
+build_examples/examples/Debug/09_positional.exe Alice -g Hi -c 2
+# Expected: Hi, Alice! twice
 
 # GUI mode (opens a window — needs display)
 build_examples/examples/Debug/01_basic.exe
