@@ -35,6 +35,22 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                                ? raw_name.substr(0, comma) : raw_name;
             bool is_named = (!name.empty() && name[0] == '-');
 
+            // Push a value for this option. For positional multi-value options,
+            // split the string by spaces so "Alice Bob" becomes two args.
+            auto push_value = [&](const std::string& val) {
+                if (is_named) {
+                    args.push_back(name);
+                    args.push_back(val);
+                } else if (!val.empty() && opt->get_expected_max() > 1 &&
+                           val.find(' ') != std::string::npos) {
+                    std::istringstream iss(val);
+                    std::string token;
+                    while (iss >> token) args.push_back(token);
+                } else {
+                    args.push_back(val);
+                }
+            };
+
             WidgetType wt = meta.widget_type;
             if (wt == WidgetType::Auto) {
                 wt = (opt->get_expected_min() == 0)
@@ -56,7 +72,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::IpAddress:
                 if (meta.initialized) {
                     if (is_named) args.push_back(name);
-                    args.push_back(meta.text_buf);
+                    push_value(meta.text_buf);
                 }
                 break;
             case WidgetType::InputInt:
@@ -64,13 +80,13 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::SliderInt:
             case WidgetType::Duration:
                 if (is_named) args.push_back(name);
-                args.push_back(std::to_string(meta.int_state));
+                push_value(std::to_string(meta.int_state));
                 break;
             case WidgetType::InputFloat:
             case WidgetType::SpinFloat:
             case WidgetType::SliderFloat:
                 if (is_named) args.push_back(name);
-                args.push_back(std::to_string(meta.float_state));
+                push_value(std::to_string(meta.float_state));
                 break;
             case WidgetType::Combo:
             case WidgetType::Radio:
@@ -78,7 +94,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 if (!meta.values.empty() && meta.combo_current >= 0 &&
                     static_cast<size_t>(meta.combo_current) < meta.values.size()) {
                     if (is_named) args.push_back(name);
-                    args.push_back(meta.values[meta.combo_current]);
+                    push_value(meta.values[meta.combo_current]);
                 }
                 break;
             case WidgetType::ColorRGB: {
@@ -86,7 +102,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 char buf[64];
                 snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
                          meta.color3[0], meta.color3[1], meta.color3[2]);
-                args.push_back(buf);
+                push_value(buf);
                 break;
             }
             case WidgetType::ColorRGBA: {
@@ -94,7 +110,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 char buf[80];
                 snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
                          meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
-                args.push_back(buf);
+                push_value(buf);
                 break;
             }
             case WidgetType::List:
@@ -103,7 +119,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                     for (auto& item : meta.list_items) {
                         if (!item.empty()) {
                             if (is_named) args.push_back(name);
-                            args.push_back(item);
+                            push_value(item);
                         }
                     }
                 }
@@ -112,7 +128,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
                 if (meta.initialized) {
                     for (auto& item : meta.list_items) {
                         if (is_named) args.push_back(name);
-                        args.push_back(item);
+                        push_value(item);
                     }
                 }
                 break;
