@@ -187,6 +187,17 @@ void launch_gui(App& app, int argc, char** argv) {
                 detail::render_subcommands(app, console);
             } else {
                 detail::render_options(app);
+                // Also render option group sections (subcommands with empty name)
+                for (auto* s : subs) {
+                    if (!s->get_name().empty()) continue;
+                    ImGui::Spacing();
+                    if (ImGui::CollapsingHeader(s->get_group().c_str(),
+                                                ImGuiTreeNodeFlags_DefaultOpen)) {
+                        for (auto* opt : s->get_options()) {
+                            detail::render_option(app, opt);
+                        }
+                    }
+                }
             }
 
             // Console panel
