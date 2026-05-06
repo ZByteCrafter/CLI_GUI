@@ -306,6 +306,16 @@ inline void render_console(ConsoleState& console) {
 
     if (ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen)) {
         auto snapshot = console.snapshot();
+
+        // Toolbar row — right-aligned buttons inside the console area
+        float btn_width = 50;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - btn_width * 3 - ImGui::GetStyle().ItemSpacing.x * 2);
+        ImGui::BeginDisabled();
+        ImGui::SmallButton("Copy"); ImGui::SameLine();
+        ImGui::SmallButton("Save"); ImGui::SameLine();
+        ImGui::EndDisabled();
+        if (ImGui::SmallButton("Clear")) { console.clear(); }
+
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
             true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -329,10 +339,6 @@ inline void render_bottom_bar(App& app, ConsoleState& console) {
             app.request_cancel();
         }
     } else {
-        if (ImGui::SmallButton("Clear")) {
-            console.clear();
-        }
-        ImGui::SameLine();
         if (ImGui::Button("Run", ImVec2(120, 0))) {
             console.run_requested = true;
         }
