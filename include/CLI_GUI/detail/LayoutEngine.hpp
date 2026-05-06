@@ -306,14 +306,7 @@ inline void render_console(ConsoleState& console) {
 
     bool header_open = ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen);
     if (header_open) {
-        // Clear button inside the expanded area
         auto snapshot = console.snapshot();
-        if (!snapshot.empty()) {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 50);
-            if (ImGui::SmallButton("Clear")) {
-                console.clear();
-            }
-        }
 
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
@@ -324,6 +317,14 @@ inline void render_console(ConsoleState& console) {
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
         ImGui::EndChild();
+
+        // Clear button below the output area, right-aligned
+        if (!snapshot.empty()) {
+            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 60);
+            if (ImGui::SmallButton("Clear")) {
+                console.clear();
+            }
+        }
     }
 }
 
