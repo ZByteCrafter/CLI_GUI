@@ -1,5 +1,5 @@
 // Example 06: Color pickers + file dialogs
-// Demonstrates ColorRGB, ColorRGBA, FileOpen, FileSave, and DirPicker widgets.
+// Demonstrates ColorRGB, ColorRGBA, FileOpen, FileSave, DirPicker, and FileOrDir widgets.
 #include <CLI_GUI/CLI_GUI.hpp>
 #include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>
@@ -41,6 +41,12 @@ int main(int argc, char** argv) {
     CLI_GUI::gui_label(app.get_option("--export"), "Export As", app);
     CLI_GUI::gui_widget(app.get_option("--export"), CLI_GUI::WidgetType::FileSave, app);
 
+    // ── Composite file/folder picker ──
+    std::string project_path = "./project";
+    app.add_option("--project", project_path, "Project path (file or folder)");
+    CLI_GUI::gui_label(app.get_option("--project"), "Project", app);
+    CLI_GUI::gui_widget(app.get_option("--project"), CLI_GUI::WidgetType::FileOrDir, app);
+
     // ── Text options ──
     std::string api_key;
     app.add_option("-k,--key", api_key, "API key");
@@ -54,6 +60,7 @@ int main(int argc, char** argv) {
         std::cout << "Config:      " << config_file << std::endl;
         std::cout << "Output dir:  " << output_dir << std::endl;
         std::cout << "Export:      " << export_path << std::endl;
+        std::cout << "Project:     " << project_path << std::endl;
     });
 
     CLI_GUI_PARSE(app, argc, argv);
