@@ -1,5 +1,6 @@
-// Example 06: Color pickers + file dialogs
-// Demonstrates ColorRGB, ColorRGBA, FileOpen, FileSave, DirPicker, and FileOrDir widgets.
+// Example 06: Color pickers + file dialogs + drag-drop
+// Demonstrates ColorRGB, ColorRGBA, FileOpen, FileSave, DirPicker, FileOrDir.
+// Tip: drag files from Explorer onto any file text field to fill the path.
 #include <CLI_GUI/CLI_GUI.hpp>
 #include <CLI_GUI/detail/Win32SuppressConsole.hpp>
 #include <iostream>

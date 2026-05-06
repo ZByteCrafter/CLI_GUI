@@ -140,7 +140,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             app.parse(static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
         } catch (const CLI::ParseError& e) {
             // GUI already validated; parse errors are unexpected but non-fatal
-            std::cerr << "CLI_GUI: parse error after GUI input: " << e.what() << std::endl;
+            std::cerr << "[ERROR] CLI parse failed: " << e.what() << std::endl;
         }
     }
 }

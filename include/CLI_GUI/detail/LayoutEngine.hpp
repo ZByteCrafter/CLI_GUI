@@ -83,6 +83,9 @@ inline void render_option(App& app, CLI::Option* opt) {
     }
 
     std::string label = meta.label.empty() ? raw_name : meta.label;
+    if (opt->get_required()) {
+        label += " *";  // required indicator
+    }
     WidgetType wt = meta.widget_type;
 
     if (wt == WidgetType::Auto) {
@@ -547,10 +550,56 @@ inline void render_bottom_bar(App& app, ConsoleState& console) {
             app.request_cancel();
         }
     } else {
+        // Check if all required options are filled
+        bool can_run = true;
+        auto check_required = [&can_run](App& a, CLI::App* cli_app) {
+            for (auto* opt : cli_app->get_options()) {
+                if (!opt->get_required()) continue;
+                const auto& meta = a.gui_meta(opt);
+                if (!meta.initialized ||
+                    (meta.text_buf[0] == 0 && !meta.bool_state &&
+                     meta.list_items.empty())) {
+                    can_run = false;
+                    return;
+                }
+            }
+            // Also check option groups under this subcommand
+            for (auto* os : cli_app->get_subcommands(
+                     [](CLI::App* s) { return s->get_name().empty(); })) {
+                for (auto* opt : os->get_options()) {
+                    if (!opt->get_required()) continue;
+                    const auto& meta = a.gui_meta(opt);
+                    if (!meta.initialized ||
+                        (meta.text_buf[0] == 0 && !meta.bool_state &&
+                         meta.list_items.empty())) {
+                        can_run = false;
+                        return;
+                    }
+                }
+            }
+        };
+        check_required(app, &app);
+        if (!console.active_subcommand.empty()) {
+            for (auto* sub : app.get_subcommands(
+                     [](CLI::App*) { return true; })) {
+                if (sub->get_name() == console.active_subcommand) {
+                    check_required(app, sub);
+                    break;
+                }
+            }
+        }
+
+        if (!can_run) ImGui::BeginDisabled();
         if (ImGui::Button("Run", ImVec2(120, 0))) {
             console.run_requested = true;
         }
+        if (!can_run) ImGui::EndDisabled();
         ImGui::SameLine();
+        if (!can_run) {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                               "Fill required * fields");
+            ImGui::SameLine();
+        }
         if (ImGui::Button("Quit", ImVec2(120, 0))) {
             console.quit_requested = true;
         }
