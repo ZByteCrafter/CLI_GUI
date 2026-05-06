@@ -305,16 +305,19 @@ inline void render_console(ConsoleState& console) {
     ImGui::Spacing();
 
     bool header_open = ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen);
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 50);
-    if (ImGui::SmallButton("Clear")) {
-        console.clear();
-    }
-
     if (header_open) {
+        // Clear button inside the expanded area
+        auto snapshot = console.snapshot();
+        if (!snapshot.empty()) {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 50);
+            if (ImGui::SmallButton("Clear")) {
+                console.clear();
+            }
+        }
+
         ImGui::BeginChild("ConsoleOutput",
             ImVec2(0, static_cast<float>(console.console_height)),
             true, ImGuiWindowFlags_HorizontalScrollbar);
-        auto snapshot = console.snapshot();
         for (auto& line : snapshot) {
             ImGui::TextColored(detect_log_level(line), "%s", line.c_str());
         }
