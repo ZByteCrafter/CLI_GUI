@@ -38,11 +38,11 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             // Push a value for this option. For positional multi-value options,
             // split the string by spaces so "Alice Bob" becomes two args.
             auto push_value = [&](const std::string& val) {
-                if (is_named) {
-                    args.push_back(name);
-                    args.push_back(val);
-                } else if (!val.empty() && opt->get_expected_max() > 1 &&
-                           val.find(' ') != std::string::npos) {
+                // Named options: name already pushed by caller above
+                // Positional multi-value with spaces: split into separate args
+                if (!is_named && !val.empty() &&
+                    opt->get_expected_max() > 1 &&
+                    val.find(' ') != std::string::npos) {
                     std::istringstream iss(val);
                     std::string token;
                     while (iss >> token) args.push_back(token);
