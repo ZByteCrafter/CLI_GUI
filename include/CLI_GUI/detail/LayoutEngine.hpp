@@ -452,11 +452,9 @@ inline void render_subcommands(App& app, ConsoleState& console) {
             console.active_subcommand.clear();  // root tab = no subcommand
         }
 
-        auto group_names = app.get_groups();  // option groups registered via add_option_group()
         for (auto* sub : subs) {
             // Skip option groups — rendered as collapsible headers, not tabs
-            if (std::find(group_names.begin(), group_names.end(),
-                          sub->get_name()) != group_names.end())
+            if (!sub->get_group().empty())
                 continue;
             bool tab_open = ImGui::BeginTabItem(sub->get_name().c_str());
             if (tab_open) {
