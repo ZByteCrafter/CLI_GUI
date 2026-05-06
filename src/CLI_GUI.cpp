@@ -60,6 +60,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::InputInt:
             case WidgetType::SpinInt:
             case WidgetType::SliderInt:
+            case WidgetType::Duration:
                 args.push_back(name);
                 args.push_back(std::to_string(meta.int_state));
                 break;
@@ -97,7 +98,6 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             // Degraded to InputText — use text_buf
             case WidgetType::List:
             case WidgetType::MultiSelect:
-            case WidgetType::Duration:
             case WidgetType::TagList:
                 if (meta.initialized) {
                     args.push_back(name);

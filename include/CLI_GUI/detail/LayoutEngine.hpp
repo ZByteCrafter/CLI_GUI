@@ -257,10 +257,31 @@ inline void render_option(App& app, CLI::Option* opt) {
             ImGui::ColorEdit4(label.c_str(), mut_meta.color4);
             break;
         }
+        case WidgetType::Duration: {
+            static const char* units[] = {"sec", "min", "hr", "day"};
+            if (!mut_meta.initialized) {
+                if (!opt->results().empty()) {
+                    try { mut_meta.int_state = std::stoi(opt->results()[0]); }
+                    catch (...) { mut_meta.int_state = 0; }
+                }
+                mut_meta.initialized = true;
+            }
+            ImGui::TextUnformatted(label.c_str());
+            ImGui::SameLine();
+            ImGui::PushID(opt);
+            ImGui::PushItemWidth(80);
+            ImGui::InputInt("##dur_val", &mut_meta.int_state);
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            ImGui::PushItemWidth(55);
+            ImGui::Combo("##dur_unit", &mut_meta.combo_current, units, 4);
+            ImGui::PopItemWidth();
+            ImGui::PopID();
+            break;
+        }
         // Not yet fully implemented — degrade to InputText
         case WidgetType::List:
         case WidgetType::MultiSelect:
-        case WidgetType::Duration:
         case WidgetType::TagList: {
             if (!mut_meta.initialized && !opt->results().empty()) {
                 std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);

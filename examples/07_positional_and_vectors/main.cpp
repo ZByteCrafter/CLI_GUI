@@ -41,6 +41,10 @@ int main(int argc, char** argv) {
     bool recursive = false;
     app.add_flag("-r,--recursive", recursive, "Process subdirectories");
 
+    int timeout = 30;
+    app.add_option("--timeout", timeout, "Timeout");
+    CLI_GUI::gui_widget(app.get_option("--timeout"), CLI_GUI::WidgetType::Duration, app);
+
     app.set_main([&]() {
         std::cout << "Files to rename: " << files.size() << std::endl;
         for (auto& f : files) std::cout << "  " << f << std::endl;
@@ -59,6 +63,7 @@ int main(int argc, char** argv) {
 
         std::cout << "Dry-run: " << (dry_run ? "yes" : "no") << std::endl;
         std::cout << "Recursive: " << (recursive ? "yes" : "no") << std::endl;
+        std::cout << "Timeout: " << timeout << " seconds" << std::endl;
     });
 
     CLI_GUI_PARSE(app, argc, argv);
