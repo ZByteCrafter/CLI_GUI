@@ -126,10 +126,12 @@ inline void render_option(App& app, CLI::Option* opt) {
                 }
                 mut_meta.initialized = true;
             }
-            float btn_w = 75;
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - btn_w - ImGui::GetStyle().ItemSpacing.x);
-            ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
-            ImGui::PopItemWidth();
+            // Label on its own line, then input + Browse button
+            ImGui::TextUnformatted(label.c_str());
+            float btn_w = 80;
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(-(btn_w + ImGui::GetStyle().ItemSpacing.x));
+            ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
             ImGui::SameLine();
             if (ImGui::Button("Browse", ImVec2(btn_w, 0))) {
                 const char* dlg_title = label.c_str();
