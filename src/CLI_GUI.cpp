@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <algorithm>
 
 namespace CLI_GUI {
 
@@ -176,7 +177,18 @@ void launch_gui(App& app, int argc, char** argv) {
             ImGui::Separator();
 
             // Render subcommands as tabs, or plain options if no subcommands
-            if (!app.get_subcommands([](CLI::App*) { return true; }).empty()) {
+            // Check for real subcommands (exclude option groups added via add_option_group)
+            bool has_real_subs = false;
+            {
+                auto groups = app.get_groups();
+                for (auto* s : app.get_subcommands([](CLI::App*) { return true; })) {
+                    if (std::find(groups.begin(), groups.end(), s->get_name()) == groups.end()) {
+                        has_real_subs = true;
+                        break;
+                    }
+                }
+            }
+            if (has_real_subs) {
                 detail::render_subcommands(app, console);
             } else {
                 detail::render_options(app);
