@@ -44,11 +44,12 @@ All GUI implementation is behind `#ifdef CLI_GUI_HAS_GUI`:
 
 ```
 include/CLI_GUI/GuiLauncher.hpp        ← launch_gui() declaration
-include/CLI_GUI/detail/BackendGLFW.hpp ← ImGui+GLFW lifecycle
-include/CLI_GUI/detail/LayoutEngine.hpp← widget/form rendering
-include/CLI_GUI/detail/ConsoleCapture.hpp← cout redirect
+include/CLI_GUI/detail/BackendGLFW.hpp ← ImGui+GLFW lifecycle + CJK font loading
+include/CLI_GUI/detail/LayoutEngine.hpp← widget/form rendering + console panel
+include/CLI_GUI/detail/ConsoleCapture.hpp← cout redirect (thread-safe streambuf)
+include/CLI_GUI/detail/FileDialog.hpp  ← native Win32 file/folder dialogs
 include/CLI_GUI/detail/Win32SuppressConsole.hpp ← Windows console suppression
-src/CLI_GUI.cpp                        ← launch_gui() implementation + fallback
+src/CLI_GUI.cpp                        ← launch_gui() + flush_gui_to_cli + fallback
 ```
 
 Without `CLI_GUI_HAS_GUI`, `CLI_GUI.hpp` does NOT include `GuiLauncher.hpp`, and `CLI_GUI_PARSE` is a plain `CLI::App::parse` call.
@@ -119,6 +120,38 @@ App{"Desc", "Hello GUI"}  // description="Desc", name="Hello GUI"  → gui_title
 ### `flush_gui_to_cli` — active subcommand only
 
 When Run is clicked, `flush_gui_to_cli(app, active_subcommand)` collects root options + only the currently active subcommand's options (inserting the subcommand name as a positional arg before its options). Other subcommand options are skipped.
+
+### ImGui ID collision — use PushID/PopID for repeated widgets
+
+Multiple FileOpen/FileSave/DirPicker widgets render the same `InputText("##file_input", ...)`. In ImGui, identical labels mean identical IDs → clicking one button may trigger another. Always wrap with `PushID(opt)` / `PopID()`:
+
+```cpp
+ImGui::PushID(opt);
+ImGui::InputText("##file_input", buf, size);
+ImGui::PopID();
+```
+
+### Input field + button layout — use SetNextItemWidth(-X)
+
+The correct pattern for a text field with a `[Browse]` button on the same line:
+
+```cpp
+float btn_w = 80;
+ImGui::SetNextItemWidth(-(btn_w + ImGui::GetStyle().ItemSpacing.x));
+ImGui::InputText("##input", buf, size);  // negative = offset from right edge
+ImGui::SameLine();
+ImGui::Button("Browse", ImVec2(btn_w, 0));
+```
+
+Do NOT use `PushItemWidth(GetContentRegionAvail().x - btn_w)` — the label consumes unknown space.
+
+### File dialogs use NULL owner on Windows
+
+`GetActiveWindow()` returns the wrong HWND for GLFW windows. Pass `nullptr` as `hwndOwner` in `OPENFILENAMEA`/`BROWSEINFOA`. The dialog appears as a standalone top-level window.
+
+### `set_callback` now runs in CLI mode
+
+Both branches of `CLI_GUI_PARSE` check `gui_callback()` before `gui_main()`. Priority: callback > main, CLI/GUI consistent. Callback in CLI mode runs synchronously without progress bar.
 
 ## vendor/ is the sole dependency source
 
