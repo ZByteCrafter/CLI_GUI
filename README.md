@@ -166,7 +166,7 @@ CLI_GUI_PARSE(app, argc, argv);
 | 开关 | `Checkbox` `Toggle` |
 | 滑块 | `SliderInt` `SliderFloat` `SpinInt` `SpinFloat` |
 | 选择 | `Combo` `Radio` `ToggleGroup` `MultiSelect` |
-| 文件 | `FileOpen` `FileSave` `DirPicker` |
+| 文件 | `FileOpen` `FileSave` `DirPicker` `FileOrDir` |
 | 颜色 | `ColorRGB` `ColorRGBA` |
 | 集合 | `List` `TagList` |
 | 其他 | `IpAddress` `Duration` |
