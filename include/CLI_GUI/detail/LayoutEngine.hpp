@@ -130,6 +130,8 @@ inline void render_option(App& app, CLI::Option* opt) {
             ImGui::TextUnformatted(label.c_str());
             float btn_w = 80;
             ImGui::SameLine();
+            // Unique ID per option to avoid conflicts between multiple file widgets
+            ImGui::PushID(opt);
             ImGui::SetNextItemWidth(-(btn_w + ImGui::GetStyle().ItemSpacing.x));
             ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
             ImGui::SameLine();
@@ -142,6 +144,7 @@ inline void render_option(App& app, CLI::Option* opt) {
                 else
                     open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
             }
+            ImGui::PopID();
             break;
         }
         case WidgetType::InputInt:
