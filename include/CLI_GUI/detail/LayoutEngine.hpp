@@ -29,6 +29,7 @@ struct ConsoleState {
     bool run_requested = false;
     bool quit_requested = false;
     std::string active_subcommand;  // name of the selected subcommand tab
+    bool auto_scroll = true;        // auto-scroll to bottom on new output
 
     /// Append a line. If over limit, drop oldest.
     void push_line(const std::string& line) {
@@ -307,13 +308,23 @@ inline void render_console(ConsoleState& console) {
     if (ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_DefaultOpen)) {
         auto snapshot = console.snapshot();
 
-        // Toolbar row — right-aligned buttons inside the console area
-        float btn_width = 50;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - btn_width * 3 - ImGui::GetStyle().ItemSpacing.x * 2);
+        // Toolbar row — right-aligned: Auto-scroll checkbox + Copy/Clear buttons
+        ImGui::SetCursorPosX(
+            ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 230);
+        ImGui::Checkbox("Auto-scroll", &console.auto_scroll);
+        ImGui::SameLine();
         ImGui::BeginDisabled();
-        ImGui::SmallButton("Copy"); ImGui::SameLine();
         ImGui::SmallButton("Save"); ImGui::SameLine();
         ImGui::EndDisabled();
+        if (ImGui::SmallButton("Copy")) {
+            std::string all;
+            for (auto& line : snapshot) {
+                all += line;
+                all += "\n";
+            }
+            ImGui::SetClipboardText(all.c_str());
+        }
+        ImGui::SameLine();
         if (ImGui::SmallButton("Clear")) { console.clear(); }
 
         ImGui::BeginChild("ConsoleOutput",
@@ -322,7 +333,8 @@ inline void render_console(ConsoleState& console) {
         for (auto& line : snapshot) {
             ImGui::TextColored(detect_log_level(line), "%s", line.c_str());
         }
-        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+        if (console.auto_scroll &&
+            ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
         ImGui::EndChild();
     }
