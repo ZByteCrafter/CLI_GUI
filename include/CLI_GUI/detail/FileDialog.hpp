@@ -21,7 +21,7 @@ inline bool open_file_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = GetActiveWindow();
+    ofn.hwndOwner = nullptr;
     ofn.lpstrFile = buf;
     ofn.nMaxFile = static_cast<DWORD>(size);
     ofn.lpstrTitle = title;
@@ -40,7 +40,7 @@ inline bool save_file_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = GetActiveWindow();
+    ofn.hwndOwner = nullptr;
     ofn.lpstrFile = buf;
     ofn.nMaxFile = static_cast<DWORD>(size);
     ofn.lpstrTitle = title;
@@ -58,7 +58,7 @@ inline bool save_file_dialog(char* buf, size_t size, const char* title) {
 inline bool dir_picker_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
     BROWSEINFOA bi = {};
-    bi.hwndOwner = GetActiveWindow();
+    bi.hwndOwner = nullptr;
     bi.lpszTitle = title;
     bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
     LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);

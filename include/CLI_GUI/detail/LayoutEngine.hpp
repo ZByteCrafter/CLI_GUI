@@ -126,20 +126,19 @@ inline void render_option(App& app, CLI::Option* opt) {
                 }
                 mut_meta.initialized = true;
             }
-            // Shorter text field to make room for [Browse...] button
-            float avail = ImGui::GetContentRegionAvail().x;
-            ImGui::PushItemWidth(avail - 75);
+            float btn_w = 75;
+            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - btn_w - ImGui::GetStyle().ItemSpacing.x);
             ImGui::InputText(label.c_str(), mut_meta.text_buf, sizeof(mut_meta.text_buf));
             ImGui::PopItemWidth();
             ImGui::SameLine();
-            if (ImGui::SmallButton("Browse...")) {
-                const char* title = label.c_str();
+            if (ImGui::Button("Browse", ImVec2(btn_w, 0))) {
+                const char* dlg_title = label.c_str();
                 if (wt == WidgetType::DirPicker)
-                    dir_picker_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+                    dir_picker_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
                 else if (wt == WidgetType::FileSave)
-                    save_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+                    save_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
                 else
-                    open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), title);
+                    open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
             }
             break;
         }
