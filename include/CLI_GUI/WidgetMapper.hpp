@@ -24,6 +24,7 @@ inline constexpr const char* to_string(WidgetType wt) {
         case WidgetType::FileOpen:    return "FileOpen";
         case WidgetType::FileSave:    return "FileSave";
         case WidgetType::DirPicker:   return "DirPicker";
+        case WidgetType::FileOrDir:   return "FileOrDir";
         case WidgetType::ColorRGB:    return "ColorRGB";
         case WidgetType::ColorRGBA:   return "ColorRGBA";
         case WidgetType::List:        return "List";

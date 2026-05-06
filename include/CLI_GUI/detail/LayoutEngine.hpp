@@ -118,7 +118,8 @@ inline void render_option(App& app, CLI::Option* opt) {
         }
         case WidgetType::FileOpen:
         case WidgetType::FileSave:
-        case WidgetType::DirPicker: {
+        case WidgetType::DirPicker:
+        case WidgetType::FileOrDir: {
             if (!mut_meta.initialized) {
                 if (!opt->results().empty()) {
                     std::strncpy(mut_meta.text_buf, opt->results()[0].c_str(), sizeof(mut_meta.text_buf) - 1);
@@ -130,19 +131,29 @@ inline void render_option(App& app, CLI::Option* opt) {
             ImGui::TextUnformatted(label.c_str());
             float btn_w = 80;
             ImGui::SameLine();
-            // Unique ID per option to avoid conflicts between multiple file widgets
             ImGui::PushID(opt);
-            ImGui::SetNextItemWidth(-(btn_w + ImGui::GetStyle().ItemSpacing.x));
+            // If FileOrDir, shrink input to make room for the checkbox too
+            float item_width = -(btn_w + ImGui::GetStyle().ItemSpacing.x);
+            if (wt == WidgetType::FileOrDir)
+                item_width -= 80;  // extra space for "Folder" checkbox
+            ImGui::SetNextItemWidth(item_width);
             ImGui::InputText("##file_input", mut_meta.text_buf, sizeof(mut_meta.text_buf));
             ImGui::SameLine();
             if (ImGui::Button("Browse", ImVec2(btn_w, 0))) {
                 const char* dlg_title = label.c_str();
-                if (wt == WidgetType::DirPicker)
+                bool use_folder = (wt == WidgetType::DirPicker);
+                if (wt == WidgetType::FileOrDir)
+                    use_folder = mut_meta.folder_mode;
+                if (use_folder)
                     dir_picker_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
                 else if (wt == WidgetType::FileSave)
                     save_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
                 else
                     open_file_dialog(mut_meta.text_buf, sizeof(mut_meta.text_buf), dlg_title);
+            }
+            if (wt == WidgetType::FileOrDir) {
+                ImGui::SameLine();
+                ImGui::Checkbox("Folder", &mut_meta.folder_mode);
             }
             ImGui::PopID();
             break;

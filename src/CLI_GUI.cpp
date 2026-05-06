@@ -49,6 +49,7 @@ static void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
             case WidgetType::FileOpen:
             case WidgetType::FileSave:
             case WidgetType::DirPicker:
+            case WidgetType::FileOrDir:
             case WidgetType::CodeEditor:
             case WidgetType::IpAddress:
                 if (meta.initialized) {

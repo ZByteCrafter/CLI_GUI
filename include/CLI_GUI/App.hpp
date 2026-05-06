@@ -29,6 +29,7 @@ struct OptionGuiMeta {
     float float_state = 0.0f;
     float color3[3] = {1.0f, 1.0f, 1.0f};
     float color4[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    bool folder_mode = false;       // FileOrDir toggle: file=false, folder=true
 };
 
 /// Extended CLI::App that stores GUI metadata for each option.

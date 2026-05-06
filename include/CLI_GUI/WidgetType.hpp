@@ -18,6 +18,7 @@ enum class WidgetType {
     FileOpen,
     FileSave,
     DirPicker,
+    FileOrDir,
     ColorRGB,
     ColorRGBA,
     List,
