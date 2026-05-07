@@ -12,6 +12,16 @@
 #include <stdexcept>
 #include <cstdio>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#ifndef IDI_CLI_GUI
+#define IDI_CLI_GUI 101
+#endif
+#endif
+
 namespace CLI_GUI {
 namespace detail {
 
@@ -71,28 +81,55 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);
 
-    // Set a default window icon (32x32, blue-purple gradient)
+    // Set window icon from embedded .exe resource (Windows) or skip (other platforms)
+#ifdef _WIN32
     {
-        static unsigned char icon_pixels[32 * 32 * 4];
-        static bool icon_built = false;
-        if (!icon_built) {
-            for (int y = 0; y < 32; ++y) {
-                for (int x = 0; x < 32; ++x) {
-                    int i = (y * 32 + x) * 4;
-                    icon_pixels[i+0] = 220;                           // B
-                    icon_pixels[i+1] = (unsigned char)(50 + y*6);    // G
-                    icon_pixels[i+2] = (unsigned char)(180 + x*2);   // R
-                    icon_pixels[i+3] = 255;                           // A
+        // Load icon by string name (matches .rc: IDI_CLI_GUI ICON "cli_gui.ico")
+        HICON hIcon = (HICON)LoadImage(GetModuleHandle(NULL),
+            "IDI_CLI_GUI", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
+        if (hIcon) {
+            ICONINFO ii;
+            if (GetIconInfo(hIcon, &ii)) {
+                BITMAPINFO bi = {};
+                bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                // Query dimensions from color bitmap (32-bit with alpha)
+                HBITMAP hBmp = ii.hbmColor ? ii.hbmColor : ii.hbmMask;
+                GetDIBits(GetDC(NULL), hBmp, 0, 0, NULL, &bi, DIB_RGB_COLORS);
+                int w = bi.bmiHeader.biWidth;
+                int h = bi.bmiHeader.biHeight;
+                if (w > 0 && h > 0) {
+                    bi.bmiHeader.biPlanes = 1;
+                    bi.bmiHeader.biBitCount = 32;
+                    bi.bmiHeader.biCompression = BI_RGB;
+                    std::vector<unsigned char> buf(w * h * 4);
+                    GetDIBits(GetDC(NULL), hBmp, 0, h, buf.data(), &bi, DIB_RGB_COLORS);
+                    std::vector<unsigned char> pixels(w * h * 4);
+                    // Convert BGRA (bottom-up) to RGBA (top-down)
+                    for (int y = 0; y < h; ++y) {
+                        unsigned char* src = buf.data() + y * w * 4;
+                        unsigned char* dst = pixels.data() + (h - 1 - y) * w * 4;
+                        for (int x = 0; x < w; ++x) {
+                            dst[x*4+0] = src[x*4+2]; // R
+                            dst[x*4+1] = src[x*4+1]; // G
+                            dst[x*4+2] = src[x*4+0]; // B
+                            // For 32-bit icons use alpha from color bitmap;
+                            // for old icons without alpha, set opaque
+                            dst[x*4+3] = ii.hbmColor ? src[x*4+3] : 255;
+                        }
+                    }
+                    GLFWimage img;
+                    img.width  = w;
+                    img.height = h;
+                    img.pixels = pixels.data();
+                    glfwSetWindowIcon(window_, 1, &img);
                 }
+                if (ii.hbmColor) DeleteObject(ii.hbmColor);
+                if (ii.hbmMask)  DeleteObject(ii.hbmMask);
             }
-            icon_built = true;
+            DestroyIcon(hIcon);
         }
-        GLFWimage img;
-        img.width  = 32;
-        img.height = 32;
-        img.pixels = icon_pixels;
-        glfwSetWindowIcon(window_, 1, &img);
     }
+#endif
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
