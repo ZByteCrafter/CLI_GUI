@@ -19,8 +19,12 @@ build_gui/tests/Debug/cli_gui_tests.exe
 cmake -B build_examples -DCLI_GUI_BUILD_EXAMPLES=ON
 cmake --build build_examples
 
-# Run single test by tag (custom runner, not real Catch2)
-build/tests/Debug/cli_gui_tests.exe   # runs all; filter by tag name in output
+# Run single test by ctest name pattern
+ctest --test-dir build -R "widget_type"
+
+# CLI smoke test
+build/examples/Debug/01_basic.exe -n "CLI" -c 3 -u
+# Expected: prints HELLO, CLI! three times
 ```
 
 ## Architecture
@@ -58,6 +62,7 @@ Users always link `CLI_GUI::CLI_GUI`. When GUI is on, `CLI_GUI_Gui` is injected 
 - Only `test_app.cpp` defines `#define CATCH_CONFIG_MAIN`. New test files must NOT define it.
 - All `.cpp` files compile into one executable `cli_gui_tests`.
 - `test_flush_real.cpp` tests the real `flush_gui_to_cli()` function — it's wrapped in `#ifdef CLI_GUI_HAS_GUI` so it only runs in GUI builds.
+- Run single test by ctest pattern: `ctest --test-dir build -R "widget_type"`
 
 ## Include Dependency Chain (no cycles)
 
@@ -131,7 +136,20 @@ After `app.parse()`, check `get_help_ptr()->count()`. If help was requested, don
 
 ### `set_callback` priority
 
-`callback > main` in both CLI and GUI modes. Both branches of `CLI_GUI_PARSE` check `gui_callback()` first.
+`callback > main` in both CLI and GUI modes. Both branches of `CLI_GUI_PARSE` check `gui_callback()` first. Callback in CLI mode runs synchronously without progress bar.
+
+### CLI11 `App` constructor — single arg is description, not name
+
+```cpp
+App{"Hello GUI"}           // description="Hello GUI", name=""  → gui_title() returns ""
+App{"Desc", "Hello GUI"}   // description="Desc", name="Hello GUI"  → gui_title() returns "Hello GUI"
+```
+
+`gui_title()` fallback chain: custom title → name → description.
+
+### GUI code gating
+
+All GUI implementation is behind `#ifdef CLI_GUI_HAS_GUI`. Without it, `CLI_GUI.hpp` does NOT include `GuiLauncher.hpp`, and `CLI_GUI_PARSE` is a plain `CLI::App::parse` call. The `CLI_GUI_Gui` static lib (and ImGui/GLFW) only compiles when GUI is enabled.
 
 ## Platform Notes
 
@@ -140,3 +158,22 @@ After `app.parse()`, check `get_help_ptr()->count()`. If help was requested, don
 - File dialogs (`FileDialog.hpp`) are Win32-only. On other platforms, `Browse` buttons print a stderr warning.
 - `imgui.ini` is auto-generated and in `.gitignore`.
 - GLFW windows need `glfwSetWindowIcon()` explicitly — the `.exe` icon is not auto-applied.
+- `vendor/` is the sole dependency source (CLI11, ImGui, GLFW) — all built via `add_subdirectory`.
+
+## Quick Smoke Tests
+
+```bash
+# All 41 tests
+build/tests/Debug/cli_gui_tests.exe
+
+# CLI mode
+build/examples/Debug/01_basic.exe -n "CLI" -c 3 -u
+# Expected: prints HELLO, CLI! three times
+
+# Positional args
+build/examples/Debug/09_positional.exe Alice -g Hi -c 2
+# Expected: Hi, Alice! twice
+
+# GUI mode (opens a window — needs display)
+build/examples/Debug/01_basic.exe
+```
