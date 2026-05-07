@@ -112,7 +112,7 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
         if (fp) {
             std::fclose(fp);
             io.Fonts->AddFontFromFileTTF(path, 16.0f, nullptr,
-                io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+                io.Fonts->GetGlyphRangesChineseFull());
             cjk_loaded = true;
             break;
         }
