@@ -179,6 +179,13 @@ void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
     }
 
     // Build char* array and parse
+#ifdef _WIN32
+    // In GBK mode, convert UTF-8 args to system ANSI code page so callbacks
+    // receive the same encoding as CLI mode.
+    if (app.gui_encoding() == Encoding::Gbk) {
+        for (auto& a : args) a = utf8_to_ansi(a);
+    }
+#endif
     std::vector<const char*> argv;
     for (auto& a : args) argv.push_back(a.c_str());
     if (argv.size() > 1) {
@@ -200,9 +207,15 @@ void launch_gui(App& app, int argc, char** argv) {
         console.console_height = app.gui_console_height();
 
         // Redirect cout to console panel
+        // In GBK mode, user code outputs GBK strings, but ImGui needs UTF-8.
         detail::CoutRedirect cout_redirect(
-            [&console](const std::string& line) {
-                console.push_line(line);
+            [&console, &app](const std::string& line) {
+#ifdef _WIN32
+                if (app.gui_encoding() == Encoding::Gbk)
+                    console.push_line(ansi_to_utf8(line));
+                else
+#endif
+                    console.push_line(line);
             }
         );
 

@@ -160,10 +160,25 @@ All GUI implementation is behind `#ifdef CLI_GUI_HAS_GUI`. Without it, `CLI_GUI.
 - GLFW windows need `glfwSetWindowIcon()` explicitly — the `.exe` icon is not auto-applied.
 - `vendor/` is the sole dependency source (CLI11, ImGui, GLFW) — all built via `add_subdirectory`.
 
+## Character Encoding (Windows)
+
+On Chinese Windows, CLI `argv` is GBK, but ImGui uses UTF-8. Two encoding modes:
+
+- **GBK (default)**: Callbacks receive GBK. Library auto-converts internally (FileDialog UTF-8→GBK, ConsoleCapture GBK→UTF-8). User code needs zero conversion.
+- **UTF-8**: Callbacks receive UTF-8. User must call `CLI_GUI::utf8_to_ansi()` before passing paths to `std::filesystem` / Win32 APIs.
+
+Set via `app.gui_encoding(CLI_GUI::Encoding::Utf8)` in `App.hpp`. Utility functions in `Encoding.hpp` (`utf8_to_ansi`, `ansi_to_utf8`).
+
+Key files:
+- `include/CLI_GUI/Encoding.hpp` — conversion utilities
+- `include/CLI_GUI/detail/FileDialog.hpp` — uses Win32 W APIs, returns UTF-8
+- `src/CLI_GUI.cpp` — `flush_gui_to_cli()` converts UTF-8→GBK in GBK mode; `launch_gui()` console callback converts GBK→UTF-8 in GBK mode
+- `include/CLI_GUI/App.hpp` — `CLI_GUI_PARSE` macro converts argv GBK→UTF-8 in UTF-8 mode
+
 ## Quick Smoke Tests
 
 ```bash
-# All 41 tests
+# All 49 tests
 build/tests/Debug/cli_gui_tests.exe
 
 # CLI mode

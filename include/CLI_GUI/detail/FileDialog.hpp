@@ -17,19 +17,26 @@
 namespace CLI_GUI {
 namespace detail {
 
-/// Open a native file-open dialog. Writes selected path to buf, returns true.
+/// Open a native file-open dialog. Writes selected path to buf as UTF-8, returns true.
 inline bool open_file_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
-    OPENFILENAMEA ofn = {};
+    wchar_t wbuf[1024] = {};
+    wchar_t wtitle[256] = {};
+    MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, 256);
+    OPENFILENAMEW ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = nullptr;
-    ofn.lpstrFile = buf;
-    ofn.nMaxFile = static_cast<DWORD>(size);
-    ofn.lpstrTitle = title;
-    ofn.lpstrFilter = "All Files\0*.*\0";
+    ofn.lpstrFile = wbuf;
+    ofn.nMaxFile = 1024;
+    ofn.lpstrTitle = wtitle;
+    ofn.lpstrFilter = L"All Files\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-    return GetOpenFileNameA(&ofn) != FALSE;
+    if (GetOpenFileNameW(&ofn) != FALSE) {
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buf, (int)size, NULL, NULL);
+        return true;
+    }
+    return false;
 #else
     (void)buf; (void)size; (void)title;
     std::fprintf(stderr, "[WARN] File open dialog not available on this platform.\n");
@@ -37,19 +44,26 @@ inline bool open_file_dialog(char* buf, size_t size, const char* title) {
 #endif
 }
 
-/// Open a native file-save dialog. Writes path to buf, returns true.
+/// Open a native file-save dialog. Writes path to buf as UTF-8, returns true.
 inline bool save_file_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
-    OPENFILENAMEA ofn = {};
+    wchar_t wbuf[1024] = {};
+    wchar_t wtitle[256] = {};
+    MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, 256);
+    OPENFILENAMEW ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = nullptr;
-    ofn.lpstrFile = buf;
-    ofn.nMaxFile = static_cast<DWORD>(size);
-    ofn.lpstrTitle = title;
-    ofn.lpstrFilter = "All Files\0*.*\0";
+    ofn.lpstrFile = wbuf;
+    ofn.nMaxFile = 1024;
+    ofn.lpstrTitle = wtitle;
+    ofn.lpstrFilter = L"All Files\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
-    return GetSaveFileNameA(&ofn) != FALSE;
+    if (GetSaveFileNameW(&ofn) != FALSE) {
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buf, (int)size, NULL, NULL);
+        return true;
+    }
+    return false;
 #else
     (void)buf; (void)size; (void)title;
     std::fprintf(stderr, "[WARN] File save dialog not available on this platform.\n");
@@ -57,17 +71,21 @@ inline bool save_file_dialog(char* buf, size_t size, const char* title) {
 #endif
 }
 
-/// Open a native folder-picker dialog. Writes path to buf, returns true.
+/// Open a native folder-picker dialog. Writes path to buf as UTF-8, returns true.
 inline bool dir_picker_dialog(char* buf, size_t size, const char* title) {
 #ifdef _WIN32
-    BROWSEINFOA bi = {};
+    wchar_t wtitle[256] = {};
+    MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, 256);
+    BROWSEINFOW bi = {};
     bi.hwndOwner = nullptr;
-    bi.lpszTitle = title;
+    bi.lpszTitle = wtitle;
     bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-    LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
+    LPITEMIDLIST pidl = SHBrowseForFolderW(&bi);
     if (pidl) {
-        SHGetPathFromIDListA(pidl, buf);
+        wchar_t wbuf[1024] = {};
+        SHGetPathFromIDListW(pidl, wbuf);
         CoTaskMemFree(pidl);
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buf, (int)size, NULL, NULL);
         return true;
     }
     return false;

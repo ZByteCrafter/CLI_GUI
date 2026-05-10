@@ -6,6 +6,7 @@
 #include <CLI/CLI.hpp>
 #include <CLI_GUI/App.hpp>
 #include <CLI_GUI/WidgetMapper.hpp>
+#include <CLI_GUI/Encoding.hpp>
 
 #ifdef CLI_GUI_HAS_GUI
 #include <CLI_GUI/GuiLauncher.hpp>

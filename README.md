@@ -102,6 +102,7 @@ app.gui_title("窗口标题");           // 窗口标题栏文字（默认用 Ap
 app.gui_size(1024, 768);            // 窗口大小（默认 800×600）
 app.gui_show_console(false);        // 隐藏控制台输出面板
 app.gui_console_height(200);        // 控制台面板高度（默认 150px）
+app.gui_encoding(CLI_GUI::Encoding::Utf8);  // 编码模式（默认 Gbk，见"字符编码"章节）
 
 // 主逻辑
 app.set_main(fn);                   // 注册主逻辑：GUI 在线程中执行，CLI 在 parse 后执行
@@ -156,6 +157,42 @@ CLI_GUI_PARSE(app, argc, argv);
 //                   if (gui_callback) gui_callback();  // callback 优先
 //                   else if (gui_main) gui_main();      // 否则 main
 // --help/-h 时自动跳过回调，仅打印帮助
+//
+// 宏内部会根据 gui_encoding() 设置自动处理 argv 编码转换。
+// UTF-8 模式下，CLI 的 GBK argv 会在 parse 前转为 UTF-8。
+```
+
+### 字符编码（Windows 中文环境）
+
+Windows 中文系统上，CLI 的 `argv` 是 GBK 编码，而 GUI（ImGui）内部使用 UTF-8。
+库提供两种编码模式统一回调收到的字符串编码：
+
+| 模式 | 回调收到 | GUI 控制台 | CLI 终端 | 用户代码 |
+|------|---------|-----------|---------|---------|
+| **GBK**（默认） | GBK | 自动转 UTF-8 显示 | 正常 | 零转换，直接用 |
+| **UTF-8** | UTF-8 | 原生 UTF-8 | 需要 `chcp 65001` | 传给 Win32/STL 前需转 GBK |
+
+```cpp
+CLI_GUI::App app{"My Tool"};
+app.gui_encoding(CLI_GUI::Encoding::Utf8);  // 可选，默认 Gbk
+```
+
+**GBK 模式（推荐）**：库在内部自动完成所有转换（文件对话框返回的 UTF-8 → GBK，控制台输出的 GBK → UTF-8），用户代码始终收到 GBK 字符串，与纯 CLI 模式完全一致。
+
+**UTF-8 模式**：回调收到 UTF-8 字符串。GUI 控制台天然正确，但 CLI 终端需要 `chcp 65001` 才能正常显示。传给 `std::filesystem`、`fopen` 等 Win32/STL API 前需要手动转码：
+
+```cpp
+// UTF-8 模式下，回调中的路径需要转 GBK 才能用于 std::filesystem
+std::string gbk_path = CLI_GUI::utf8_to_ansi(dir_path);
+bool exists = std::filesystem::exists(gbk_path);
+```
+
+**编码工具函数**（`#include <CLI_GUI/Encoding.hpp>`，通过 `CLI_GUI.hpp` 自动引入）：
+
+```cpp
+std::string gbk  = CLI_GUI::utf8_to_ansi(utf8_str);   // UTF-8 → 系统代码页
+std::string utf8 = CLI_GUI::ansi_to_utf8(gbk_str);     // 系统代码页 → UTF-8
+// 非 Windows 平台：原样返回，不做转换
 ```
 
 ---
@@ -194,6 +231,7 @@ CLI_GUI_PARSE(app, argc, argv);
 | `07_positional_and_vectors` | 批量重命名 | 位置参数、vector 选项、Required、Duration |
 | `08_full_app` | 媒体转换套件 | 综合示例（子命令+分组+回调+颜色） |
 | `09_positional` | 问候器 | 位置参数、Required、多值、expected(N) |
+| `10_chinese_path` | 中文路径测试 | 文件对话框中文路径、编码转换验证 |
 
 运行：
 
@@ -217,12 +255,12 @@ cmake -B build -DCLI_GUI_ENABLE_GUI=OFF
 cmake -B build_gui -DCLI_GUI_ENABLE_GUI=ON
 cmake --build build_gui
 
-# 运行 41 个测试
+# 运行 49 个测试
 cmake -B build -DCLI_GUI_BUILD_TESTS=ON -DCLI_GUI_ENABLE_GUI=OFF
 cmake --build build
 build/tests/Debug/cli_gui_tests.exe
 
-# 构建全部 9 个示例
+# 构建全部 10 个示例
 cmake -B build_examples -DCLI_GUI_ENABLE_GUI=ON -DCLI_GUI_BUILD_EXAMPLES=ON
 cmake --build build_examples
 ```
@@ -243,6 +281,7 @@ CLI11_GUI/
 ├── include/CLI_GUI/          # ★ 公开头文件——这是你需要 include 的
 │   ├── CLI_GUI.hpp           #   唯一入口：#include <CLI_GUI/CLI_GUI.hpp>
 │   ├── App.hpp               #   App 类 + OptionGuiMeta + CLI_GUI_PARSE 宏
+│   ├── Encoding.hpp          #   utf8_to_ansi / ansi_to_utf8 编码转换工具
 │   ├── WidgetType.hpp        #   WidgetType 枚举（25 种）
 │   ├── WidgetMapper.hpp      #   编译期类型 → 控件映射
 │   └── detail/               #   内部实现（不需要直接 include）
@@ -252,8 +291,8 @@ CLI11_GUI/
 │   ├── imgui/                #   Dear ImGui v1.91
 │   ├── imgui_backends/       #   GLFW + OpenGL3 后端
 │   └── glfw/                 #   GLFW 3.4
-├── tests/                    # 41 个单元测试
-├── examples/                 # 9 个完整示例
+├── tests/                    # 49 个单元测试
+├── examples/                 # 10 个完整示例
 ├── resources/                # Windows 资源文件（.ico + .rc）
 ├── cmake/                    # CMake 包配置
 └── CMakeLists.txt
