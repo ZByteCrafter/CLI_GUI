@@ -154,9 +154,11 @@ CLI_GUI_PARSE(app, argc, argv);
 // 展开为:
 // if (argc <= 1)  →  launch_gui(app, argc, argv);   // GUI 模式
 // else           →  app.parse(argc, argv);           // CLI 模式
-//                   if (gui_callback) gui_callback();  // callback 优先
-//                   else if (gui_main) gui_main();      // 否则 main
+//                   if (parse 成功) {
+//                     if (--help 未请求) → 执行 callback/main
+//                   }
 // --help/-h 时自动跳过回调，仅打印帮助
+// parse 错误时自动跳过回调，避免用未定义状态执行用户代码
 //
 // 宏内部会根据 gui_encoding() 设置自动处理 argv 编码转换。
 // UTF-8 模式下，CLI 的 GBK argv 会在 parse 前转为 UTF-8。

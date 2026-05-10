@@ -126,13 +126,21 @@ For `Auto`-inferred `InputText` options that are actually numeric, `flush_gui_to
 
 Filter option groups from real subcommands by `sub->get_name().empty()`, not by `sub->get_group()`.
 
+### Option group options are flushed correctly
+
+`flush_gui_to_cli` iterates both direct options and option groups (empty-name subcommands) via `flush_option()` helper. Options registered via `add_option_group()` are included in the synthetic argv.
+
 ### ImGui ID collisions
 
 Multiple widgets with the same label create ID collisions. Always wrap with `PushID(opt)` / `PopID()`.
 
-### `--help` skips callback/main
+### UTF-8 safe truncation
 
-After `app.parse()`, check `get_help_ptr()->count()`. If help was requested, don't execute callbacks.
+Use `detail::utf8_strncpy(dst, src, dst_size)` instead of `strncpy` when copying UTF-8 strings into fixed-size buffers. It truncates at valid UTF-8 boundaries to avoid splitting multi-byte characters.
+
+### `--help` and parse errors skip callback/main
+
+After `app.parse()`, check `get_help_ptr()->count()`. If help was requested, don't execute callbacks. The `CLI_GUI_PARSE` macro also tracks parse success — if `parse()` throws (e.g. `RequiredError`, `ArgumentMismatch`), the callback is skipped entirely to avoid running with undefined state.
 
 ### `set_callback` priority
 
