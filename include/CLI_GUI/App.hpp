@@ -158,17 +158,18 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
         if (cli_gui_argc_ <= 1) {                                              \
             CLI_GUI::launch_gui((app), cli_gui_argc_, cli_gui_argv_);        \
         } else {                                                               \
-            try { (app).parse(cli_gui_argc_, cli_gui_argv_); }                \
-            catch (const CLI::ParseError& e) {                                 \
-                (app).exit(e);                                                 \
-            }                                                                  \
-            auto cli_gui_help_ = (app).get_help_ptr();                        \
-            if (!cli_gui_help_ || cli_gui_help_->count() == 0) {             \
-                auto cli_gui_cb_ = (app).gui_callback();                      \
-                if (cli_gui_cb_) { cli_gui_cb_(); }                           \
-                else {                                                         \
-                    auto cli_gui_main_ = (app).gui_main();                    \
-                    if (cli_gui_main_) cli_gui_main_();                       \
+            bool cli_gui_ok_ = false;                                          \
+            try { (app).parse(cli_gui_argc_, cli_gui_argv_); cli_gui_ok_ = true; } \
+            catch (const CLI::ParseError& e) { (app).exit(e); }              \
+            if (cli_gui_ok_) {                                                 \
+                auto cli_gui_help_ = (app).get_help_ptr();                    \
+                if (!cli_gui_help_ || cli_gui_help_->count() == 0) {         \
+                    auto cli_gui_cb_ = (app).gui_callback();                  \
+                    if (cli_gui_cb_) { cli_gui_cb_(); }                       \
+                    else {                                                     \
+                        auto cli_gui_main_ = (app).gui_main();                \
+                        if (cli_gui_main_) cli_gui_main_();                   \
+                    }                                                          \
                 }                                                              \
             }                                                                  \
         }                                                                      \
@@ -187,17 +188,18 @@ inline CLI::Option* gui_values(CLI::Option* opt, std::vector<std::string> vals, 
             cli_gui_argc_ = static_cast<int>(cli_gui_uv_.size());            \
             cli_gui_argv_ = const_cast<char**>(cli_gui_uv_.data());          \
         }                                                                      \
-        try { (app).parse(cli_gui_argc_, cli_gui_argv_); }                    \
-        catch (const CLI::ParseError& e) {                                     \
-            (app).exit(e);                                                     \
-        }                                                                      \
-        auto cli_gui_help_ = (app).get_help_ptr();                            \
-        if (!cli_gui_help_ || cli_gui_help_->count() == 0) {                 \
-            auto cli_gui_cb_ = (app).gui_callback();                          \
-            if (cli_gui_cb_) { cli_gui_cb_(); }                               \
-            else {                                                             \
-                auto cli_gui_main_ = (app).gui_main();                        \
-                if (cli_gui_main_) cli_gui_main_();                           \
+        bool cli_gui_ok_ = false;                                              \
+        try { (app).parse(cli_gui_argc_, cli_gui_argv_); cli_gui_ok_ = true; } \
+        catch (const CLI::ParseError& e) { (app).exit(e); }                  \
+        if (cli_gui_ok_) {                                                     \
+            auto cli_gui_help_ = (app).get_help_ptr();                        \
+            if (!cli_gui_help_ || cli_gui_help_->count() == 0) {             \
+                auto cli_gui_cb_ = (app).gui_callback();                      \
+                if (cli_gui_cb_) { cli_gui_cb_(); }                           \
+                else {                                                         \
+                    auto cli_gui_main_ = (app).gui_main();                    \
+                    if (cli_gui_main_) cli_gui_main_();                       \
+                }                                                              \
             }                                                                  \
         }                                                                      \
     } while (0)

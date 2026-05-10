@@ -8,6 +8,7 @@
 #include <sstream>
 #include <atomic>
 #include <mutex>
+#include <cstring>
 #include <deque>
 #include <cstring>
 #include <algorithm>
@@ -57,6 +58,20 @@ struct ConsoleState {
         buffer.clear();
     }
 };
+
+/// Copy a UTF-8 string into a fixed-size buffer, truncating at a valid UTF-8 boundary.
+inline void utf8_strncpy(char* dst, const char* src, size_t dst_size) {
+    if (dst_size == 0) return;
+    size_t len = std::strlen(src);
+    if (len >= dst_size) {
+        len = dst_size - 1;
+        // Back up to the last valid UTF-8 start byte (not a continuation byte 10xxxxxx)
+        while (len > 0 && (static_cast<unsigned char>(src[len]) & 0xC0) == 0x80)
+            --len;
+    }
+    std::memcpy(dst, src, len);
+    dst[len] = '\0';
+}
 
 /// Detect log level from a line prefix and return the display color.
 inline ImVec4 detect_log_level(const std::string& line) {
@@ -141,8 +156,7 @@ inline void render_option(App& app, CLI::Option* opt, ConsoleState& console) {
         case WidgetType::IpAddress: {
             if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    std::strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf) - 1);
-                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
+                    utf8_strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf));
                 }
                 meta.initialized = true;
             }
@@ -155,8 +169,7 @@ inline void render_option(App& app, CLI::Option* opt, ConsoleState& console) {
         case WidgetType::FileOrDir: {
             if (!meta.initialized) {
                 if (!opt->results().empty()) {
-                    std::strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf) - 1);
-                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
+                    utf8_strncpy(meta.text_buf, opt->results()[0].c_str(), sizeof(meta.text_buf));
                 }
                 meta.initialized = true;
             }
@@ -179,9 +192,8 @@ inline void render_option(App& app, CLI::Option* opt, ConsoleState& console) {
             if (console.drop_target == opt) {
                 auto dropped = BackendGLFW::take_dropped_paths();
                 if (!dropped.empty()) {
-                    std::strncpy(meta.text_buf, dropped[0].c_str(),
-                                 sizeof(meta.text_buf) - 1);
-                    meta.text_buf[sizeof(meta.text_buf) - 1] = '\0';
+                    utf8_strncpy(meta.text_buf, dropped[0].c_str(),
+                                 sizeof(meta.text_buf));
                 }
             }
             ImGui::SameLine();
@@ -342,7 +354,7 @@ inline void render_option(App& app, CLI::Option* opt, ConsoleState& console) {
                 ImGui::PushID(i);
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30);
                 char buf[1024] = {};
-                std::strncpy(buf, meta.list_items[i].c_str(), sizeof(buf) - 1);
+                utf8_strncpy(buf, meta.list_items[i].c_str(), sizeof(buf));
                 ImGui::InputText("##li", buf, sizeof(buf));
                 meta.list_items[i] = buf;
                 ImGui::SameLine();

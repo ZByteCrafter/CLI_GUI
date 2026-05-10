@@ -23,146 +23,144 @@ void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
     std::vector<std::string> args;
     args.push_back("gui"); // argv[0] placeholder
 
-    // Helper: collect options from a CLI::App*, looking up metadata from root
-    auto collect_from = [&args](App& root, CLI::App* a) {
-        for (auto* opt : a->get_options()) {
-            auto& meta = root.gui_meta(opt);
-            // Extract the first name (e.g. "--count" from "--count,-c")
-            std::string raw_name = opt->get_name();
-            if (raw_name.empty()) continue;
-            auto comma = raw_name.find(',');
-            std::string name = (comma != std::string::npos)
-                               ? raw_name.substr(0, comma) : raw_name;
-            bool is_named = (!name.empty() && name[0] == '-');
+    // Flush a single option's GUI state into args.
+    auto flush_option = [&args](App& root, CLI::Option* opt) {
+        auto& meta = root.gui_meta(opt);
+        std::string raw_name = opt->get_name();
+        if (raw_name.empty()) return;
+        auto comma = raw_name.find(',');
+        std::string name = (comma != std::string::npos)
+                           ? raw_name.substr(0, comma) : raw_name;
+        bool is_named = (!name.empty() && name[0] == '-');
 
-            // Push a value for this option. For positional multi-value options,
-            // split the string by spaces so "Alice Bob" becomes two args.
-            auto push_value = [&](const std::string& val) {
-                // Named options: name already pushed by caller above
-                // Positional multi-value with spaces: split into separate args
-                if (!is_named && !val.empty() &&
-                    opt->get_expected_max() > 1 &&
-                    val.find(' ') != std::string::npos) {
-                    std::istringstream iss(val);
-                    std::string token;
-                    while (iss >> token) args.push_back(token);
-                } else {
-                    args.push_back(val);
-                }
-            };
+        auto push_value = [&](const std::string& val) {
+            if (!is_named && !val.empty() &&
+                opt->get_expected_max() > 1 &&
+                val.find(' ') != std::string::npos) {
+                std::istringstream iss(val);
+                std::string token;
+                while (iss >> token) args.push_back(token);
+            } else {
+                args.push_back(val);
+            }
+        };
 
-            WidgetType wt = meta.widget_type;
-            if (wt == WidgetType::Auto) {
-                if (opt->get_expected_min() == 0)
-                    wt = WidgetType::Checkbox;
-                else if (!meta.values.empty())
-                    wt = WidgetType::Combo;
-                else
-                    wt = WidgetType::InputText;
-            }
+        WidgetType wt = meta.widget_type;
+        if (wt == WidgetType::Auto) {
+            if (opt->get_expected_min() == 0)
+                wt = WidgetType::Checkbox;
+            else if (!meta.values.empty())
+                wt = WidgetType::Combo;
+            else
+                wt = WidgetType::InputText;
+        }
 
-            // Sync meta fields: for inferred-InputText numeric options,
-            // populate text_buf from int_state/float_state so the flush
-            // picks up values set by sliders/spinners.
-            if (meta.initialized && wt == WidgetType::InputText) {
-                auto opt_t = opt->get_type_name();
-                if (opt_t == "INT" || opt_t == "int" || opt_t == "LONG") {
-                    auto s = std::to_string(meta.int_state);
-                    std::strncpy(meta.text_buf, s.c_str(),
-                                 sizeof(meta.text_buf) - 1);
-                } else if (opt_t == "FLOAT" || opt_t == "double") {
-                    auto s = std::to_string(meta.float_state);
-                    std::strncpy(meta.text_buf, s.c_str(),
-                                 sizeof(meta.text_buf) - 1);
-                }
+        if (meta.initialized && wt == WidgetType::InputText) {
+            auto opt_t = opt->get_type_name();
+            if (opt_t == "INT" || opt_t == "int" || opt_t == "LONG") {
+                auto s = std::to_string(meta.int_state);
+                detail::utf8_strncpy(meta.text_buf, s.c_str(), sizeof(meta.text_buf));
+            } else if (opt_t == "FLOAT" || opt_t == "double") {
+                auto s = std::to_string(meta.float_state);
+                detail::utf8_strncpy(meta.text_buf, s.c_str(), sizeof(meta.text_buf));
             }
+        }
 
-            switch (wt) {
-            case WidgetType::Checkbox:
-            case WidgetType::Toggle:
-                if (meta.bool_state && is_named) { args.push_back(name); }
-                break;
-            case WidgetType::InputText:
-            case WidgetType::Password:
-            case WidgetType::FileOpen:
-            case WidgetType::FileSave:
-            case WidgetType::DirPicker:
-            case WidgetType::FileOrDir:
-            case WidgetType::CodeEditor:
-            case WidgetType::IpAddress:
-                if (meta.initialized) {
-                    if (is_named) args.push_back(name);
-                    push_value(meta.text_buf);
-                }
-                break;
-            case WidgetType::InputInt:
-            case WidgetType::SpinInt:
-            case WidgetType::SliderInt:
-            case WidgetType::Duration:
-                if (meta.initialized) {
-                    if (is_named) args.push_back(name);
-                    push_value(std::to_string(meta.int_state));
-                }
-                break;
-            case WidgetType::InputFloat:
-            case WidgetType::SpinFloat:
-            case WidgetType::SliderFloat:
-                if (meta.initialized) {
-                    if (is_named) args.push_back(name);
-                    push_value(std::to_string(meta.float_state));
-                }
-                break;
-            case WidgetType::Combo:
-            case WidgetType::Radio:
-            case WidgetType::ToggleGroup:
-                if (meta.initialized && !meta.values.empty() &&
-                    meta.combo_current >= 0 &&
-                    static_cast<size_t>(meta.combo_current) < meta.values.size()) {
-                    if (is_named) args.push_back(name);
-                    push_value(meta.values[meta.combo_current]);
-                }
-                break;
-            case WidgetType::ColorRGB: {
-                if (meta.initialized) {
-                    if (is_named) args.push_back(name);
-                    char buf[64];
-                    snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
-                             meta.color3[0], meta.color3[1], meta.color3[2]);
-                    push_value(buf);
-                }
-                break;
+        switch (wt) {
+        case WidgetType::Checkbox:
+        case WidgetType::Toggle:
+            if (meta.bool_state && is_named) { args.push_back(name); }
+            break;
+        case WidgetType::InputText:
+        case WidgetType::Password:
+        case WidgetType::FileOpen:
+        case WidgetType::FileSave:
+        case WidgetType::DirPicker:
+        case WidgetType::FileOrDir:
+        case WidgetType::CodeEditor:
+        case WidgetType::IpAddress:
+            if (meta.initialized) {
+                if (is_named) args.push_back(name);
+                push_value(meta.text_buf);
             }
-            case WidgetType::ColorRGBA: {
-                if (meta.initialized) {
-                    if (is_named) args.push_back(name);
-                    char buf[80];
-                    snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
-                             meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
-                    push_value(buf);
-                }
-                break;
+            break;
+        case WidgetType::InputInt:
+        case WidgetType::SpinInt:
+        case WidgetType::SliderInt:
+        case WidgetType::Duration:
+            if (meta.initialized) {
+                if (is_named) args.push_back(name);
+                push_value(std::to_string(meta.int_state));
             }
-            case WidgetType::List:
-            case WidgetType::TagList:
-                if (meta.initialized) {
-                    for (auto& item : meta.list_items) {
-                        if (!item.empty()) {
-                            if (is_named) args.push_back(name);
-                            push_value(item);
-                        }
-                    }
-                }
-                break;
-            case WidgetType::MultiSelect:
-                if (meta.initialized) {
-                    for (auto& item : meta.list_items) {
+            break;
+        case WidgetType::InputFloat:
+        case WidgetType::SpinFloat:
+        case WidgetType::SliderFloat:
+            if (meta.initialized) {
+                if (is_named) args.push_back(name);
+                push_value(std::to_string(meta.float_state));
+            }
+            break;
+        case WidgetType::Combo:
+        case WidgetType::Radio:
+        case WidgetType::ToggleGroup:
+            if (meta.initialized && !meta.values.empty() &&
+                meta.combo_current >= 0 &&
+                static_cast<size_t>(meta.combo_current) < meta.values.size()) {
+                if (is_named) args.push_back(name);
+                push_value(meta.values[meta.combo_current]);
+            }
+            break;
+        case WidgetType::ColorRGB: {
+            if (meta.initialized) {
+                if (is_named) args.push_back(name);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f",
+                         meta.color3[0], meta.color3[1], meta.color3[2]);
+                push_value(buf);
+            }
+            break;
+        }
+        case WidgetType::ColorRGBA: {
+            if (meta.initialized) {
+                if (is_named) args.push_back(name);
+                char buf[80];
+                snprintf(buf, sizeof(buf), "%.2f %.2f %.2f %.2f",
+                         meta.color4[0], meta.color4[1], meta.color4[2], meta.color4[3]);
+                push_value(buf);
+            }
+            break;
+        }
+        case WidgetType::List:
+        case WidgetType::TagList:
+            if (meta.initialized) {
+                for (auto& item : meta.list_items) {
+                    if (!item.empty()) {
                         if (is_named) args.push_back(name);
                         push_value(item);
                     }
                 }
-                break;
             }
+            break;
+        case WidgetType::MultiSelect:
+            if (meta.initialized) {
+                for (auto& item : meta.list_items) {
+                    if (is_named) args.push_back(name);
+                    push_value(item);
+                }
+            }
+            break;
         }
+    };
+
+    // Collect options from a CLI::App* and its option groups.
+    auto collect_from = [&](App& root, CLI::App* a) {
+        for (auto* opt : a->get_options())
+            flush_option(root, opt);
+        // Also collect options from option groups (subcommands with empty names)
+        for (auto* og : a->get_subcommands([](CLI::App* s) { return s->get_name().empty(); }))
+            for (auto* opt : og->get_options())
+                flush_option(root, opt);
     };
 
     collect_from(app, &app);
@@ -192,8 +190,7 @@ void flush_gui_to_cli(App& app, const std::string& active_subcommand) {
         try {
             app.parse(static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
         } catch (const CLI::ParseError& e) {
-            // GUI already validated; parse errors are unexpected but non-fatal
-            std::cerr << "[ERROR] CLI parse failed: " << e.what() << std::endl;
+            throw std::runtime_error(std::string("CLI parse failed: ") + e.what());
         }
     }
 }
@@ -274,7 +271,13 @@ void launch_gui(App& app, int argc, char** argv) {
                 console.run_requested = false;
 
                 // Flush GUI values back to CLI11 before executing
-                flush_gui_to_cli(app, console.active_subcommand);
+                try {
+                    flush_gui_to_cli(app, console.active_subcommand);
+                } catch (const std::exception& e) {
+                    console.push_line(std::string("[ERROR] ") + e.what());
+                    console.running = false;
+                    continue;
+                }
 
                 auto cb = app.gui_callback();
                 auto main_fn = app.gui_main();
@@ -331,7 +334,11 @@ void launch_gui(App& app, int argc, char** argv) {
         }
 
         // On exit, flush values one more time (in case user quit without Run)
-        flush_gui_to_cli(app, console.active_subcommand);
+        try {
+            flush_gui_to_cli(app, console.active_subcommand);
+        } catch (...) {
+            // Ignore parse errors on exit — user is quitting anyway
+        }
 
         // Wait for worker thread
         app.request_cancel();

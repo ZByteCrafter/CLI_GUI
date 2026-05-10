@@ -94,7 +94,8 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
                 bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
                 // Query dimensions from color bitmap (32-bit with alpha)
                 HBITMAP hBmp = ii.hbmColor ? ii.hbmColor : ii.hbmMask;
-                GetDIBits(GetDC(NULL), hBmp, 0, 0, NULL, &bi, DIB_RGB_COLORS);
+                HDC dc = GetDC(NULL);
+                GetDIBits(dc, hBmp, 0, 0, NULL, &bi, DIB_RGB_COLORS);
                 int w = bi.bmiHeader.biWidth;
                 int h = bi.bmiHeader.biHeight;
                 if (w > 0 && h > 0) {
@@ -102,7 +103,8 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
                     bi.bmiHeader.biBitCount = 32;
                     bi.bmiHeader.biCompression = BI_RGB;
                     std::vector<unsigned char> buf(w * h * 4);
-                    GetDIBits(GetDC(NULL), hBmp, 0, h, buf.data(), &bi, DIB_RGB_COLORS);
+                    GetDIBits(dc, hBmp, 0, h, buf.data(), &bi, DIB_RGB_COLORS);
+                    ReleaseDC(NULL, dc);
                     std::vector<unsigned char> pixels(w * h * 4);
                     // Convert BGRA (bottom-up) to RGBA (top-down)
                     for (int y = 0; y < h; ++y) {
@@ -122,6 +124,8 @@ BackendGLFW::BackendGLFW(const std::string& title, int width, int height) {
                     img.height = h;
                     img.pixels = pixels.data();
                     glfwSetWindowIcon(window_, 1, &img);
+                } else {
+                    ReleaseDC(NULL, dc);
                 }
                 if (ii.hbmColor) DeleteObject(ii.hbmColor);
                 if (ii.hbmMask)  DeleteObject(ii.hbmMask);
